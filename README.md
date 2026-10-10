@@ -13,6 +13,8 @@ The status dot in the menu bar does the talking:
 | 🟠 orange | loading | server up, pulling the model in |
 | ⚪ gray | stopped | agent stopped, memory freed |
 
+![The SplashBar menu](docs/menu.png)
+
 ## What it does
 
 - Shows the Splash server state in the menu bar (● green = serving, blue = idle,
