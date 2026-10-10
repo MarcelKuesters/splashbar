@@ -4,7 +4,14 @@ A tiny macOS menu bar app to control a local [Splash](https://github.com/incoai/
 inference server: start/stop/restart the `launchctl` service, watch the model's
 GPU memory footprint, and jump straight to the built-in chat page.
 
-![menu](docs/menu.png)
+The status dot in the menu bar does the talking:
+
+| Dot | State | Meaning |
+|-----|-------|---------|
+| 🟢 green | serving | model loaded, answering requests |
+| 🔵 blue | idle | loaded but unloaded to save memory (re-loads in ~5 s) |
+| 🟠 orange | loading | server up, pulling the model in |
+| ⚪ gray | stopped | agent stopped, memory freed |
 
 ## What it does
 
