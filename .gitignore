@@ -1,0 +1,19 @@
+# Build artifacts
+SplashBar.app/
+/SplashBar
+*.o
+*.dSYM/
+build.log
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
+xcuserdata/
+
+# Local notes (keep your private planning out of the public repo)
+IDEA.md
+GITHUB-LEARNING.md
+
+# Local config (if a config-file mode lands)
+splashbar.toml
