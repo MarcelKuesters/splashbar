@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-SRC=$HOME/.splashbar-src
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP=/Applications/SplashBar.app
 mkdir -p "$APP/Contents/MacOS"
 swiftc -O -swift-version 5 -o "$APP/Contents/MacOS/SplashBar" "$SRC/main.swift" -framework Cocoa
