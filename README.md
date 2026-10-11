@@ -46,17 +46,22 @@ SplashBar auto-starts at login.
 
 ### Configuration
 
-The app talks to a fixed set of paths defined at the top of `main.swift`:
+Open **Einstellungen …** from the SplashBar menu to configure your Splash
+installation. Settings are saved for the current macOS user and take effect
+without rebuilding the app.
 
-| Constant      | Meaning                                   | Default                          |
-|---------------|-------------------------------------------|----------------------------------|
-| `label`       | Splash's launchd agent label              | `local.llm.splash`               |
-| `chatURL`     | Splash web chat                           | `http://127.0.0.1:8080`          |
-| `logPath`     | Splash server log                         | `~/Library/Logs/Splash/splash.log` |
-| `plistPath`   | Splash agent plist                        | `~/Library/LaunchAgents/local.llm.splash.plist` |
+| Setting | Default |
+|---------|---------|
+| Server URL (chat and API health check) | `http://127.0.0.1:8080` |
+| Splash LaunchAgent label | `local.llm.splash` |
+| Splash LaunchAgent plist | `~/Library/LaunchAgents/local.llm.splash.plist` |
+| Splash log | `~/Library/Logs/Splash/splash.log` |
+| Status refresh interval | 5 seconds |
+| API request timeout | 2 seconds |
+| Idle memory threshold | 3 GB |
 
-If your Splash setup uses different values, edit the constants at the top of
-`main.swift` and rebuild. (A `--config` file is on the roadmap.)
+The server URL is shared by the chat shortcut and the `/v1/models` health
+check. Paths may start with `~` to refer to your home directory.
 
 ## Uninstall
 

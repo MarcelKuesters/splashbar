@@ -20,8 +20,6 @@ there's a low barrier to entry.
 
 ### Good first contributions
 
-- Making the port/label/chat URL configurable via a `~/.config/splashbar/splashbar.toml`
-  file or launch arguments
 - Showing the currently loaded model (from `GET /v1/models`) in the menu
 - Localizing the menu (currently English; German strings live in `main.swift`)
 - An Apple Silicon memory readout that doesn't shell out to `footprint`
