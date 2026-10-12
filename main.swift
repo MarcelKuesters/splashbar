@@ -66,6 +66,18 @@ func shellQuote(_ value: String) -> String {
     "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
 }
 
+func serverAddress(for url: URL) -> String {
+    let host = url.host ?? "Server"
+    let displayHost = host.contains(":") ? "[\(host)]" : host
+    let defaultPort: Int? = switch url.scheme?.lowercased() {
+    case "http": 80
+    case "https": 443
+    default: nil
+    }
+    let port = url.port ?? defaultPort
+    return port.map { "\(displayHost):\($0)" } ?? displayHost
+}
+
 func expandedPath(_ path: String) -> String {
     (path as NSString).expandingTildeInPath
 }
@@ -149,7 +161,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let healthURL = currentSettings.serverURL
                     .appendingPathComponent("v1")
                     .appendingPathComponent("models")
-                let code = sh("curl -s -m \(currentSettings.requestTimeout) -o /dev/null -w '%{http_code}' \(shellQuote(healthURL.absoluteString))")
+                let code = sh("curl -s -m \(shellQuote(String(currentSettings.requestTimeout))) -o /dev/null -w '%{http_code}' \(shellQuote(healthURL.absoluteString))")
                 let child = sh("pgrep -P \(shellQuote(pid)) | head -1")
                 memoryGB = footprintGB(child.isEmpty ? pid : child)
                 if code == "200" {
@@ -167,10 +179,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         switch state {
         case .running:
             color = .systemGreen
-            statusLine.title = "Splash läuft · \(settings.serverURL.host ?? "Server")"
+            statusLine.title = "Splash läuft · \(serverAddress(for: settings.serverURL))"
         case .idle:
             color = .systemBlue
-            statusLine.title = "Splash ruht · Modell entladen (lädt bei Anfrage)"
+            statusLine.title = "Splash ruht · Modell entladen (lädt bei Anfrage) · ~\(Int(settings.refreshInterval)) s"
         case .loading:
             color = .systemOrange
             statusLine.title = "Splash startet / lädt Modell …"
