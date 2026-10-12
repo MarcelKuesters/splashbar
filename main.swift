@@ -511,6 +511,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var settings = SplashBarSettings()
     var item: NSStatusItem!
     let statusLine = NSMenuItem(title: tr("status.checking"), action: nil, keyEquivalent: "")
+    let modelLine = NSMenuItem(title: tr("status.modelchecking"), action: nil, keyEquivalent: "")
     let memLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     let versionLine = NSMenuItem(title: tr("status.versionchecking"), action: nil, keyEquivalent: "")
     var startItem: NSMenuItem!
@@ -551,8 +552,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
         statusLine.isEnabled = false
+        modelLine.isEnabled = false
         memLine.isEnabled = false
         menu.addItem(statusLine)
+        menu.addItem(modelLine)
         menu.addItem(memLine)
         menu.addItem(versionLine)
         menu.addItem(.separator())
@@ -590,6 +593,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let pid = sh("launchctl print \(shellQuote(serviceTarget)) 2>/dev/null | awk '$1==\"pid\" {print $3; exit}'")
             var state = ServerState.stopped
             var memoryGB: Double = 0
+            var model = ""
             if !pid.isEmpty {
                 let healthURL = currentSettings.serverURL
                     .appendingPathComponent("v1")
@@ -597,17 +601,39 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let code = sh("curl -s -m \(shellQuote(String(currentSettings.requestTimeout))) -o /dev/null -w '%{http_code}' \(shellQuote(healthURL.absoluteString))")
                 let child = sh("pgrep -P \(shellQuote(pid)) | head -1")
                 memoryGB = footprintGB(child.isEmpty ? pid : child)
+                model = self.currentModel(healthURL, timeout: currentSettings.requestTimeout)
                 if code == "200" {
                     state = memoryGB < currentSettings.idleThresholdGB ? .idle : .running
                 } else {
                     state = .loading
                 }
             }
-            DispatchQueue.main.async { self.apply(state, memoryGB) }
+            DispatchQueue.main.async { self.apply(state, memoryGB, model) }
         }
     }
 
-    func apply(_ state: ServerState, _ memoryGB: Double) {
+    /// Liest das gerade geladene Modell vom Server (z. B. "mlx-community/Qwen3.8-27B-4bit")
+    /// und hält die Menüzeile mit einer Kürzung auf 34 Zeichen schmal.
+    func currentModel(_ url: URL, timeout: TimeInterval) -> String {
+        let raw = sh("curl -s -m \(shellQuote(String(timeout))) \(shellQuote(url.absoluteString))")
+        guard let data = raw.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let dict = object as? [String: Any] else { return "" }
+        if let entries = dict["data"] as? [[String: Any]] {
+            if let id = entries.first?["id"] as? String, !id.isEmpty { return truncate(id) }
+        }
+        if let models = dict["models"] as? [[String: Any]] {
+            if let name = models.first?["name"] as? String, !name.isEmpty { return truncate(name) }
+        }
+        return ""
+    }
+
+    /// Hält die Menüzeile schmal: IDs länger als 34 Zeichen werden gekürzt.
+    private func truncate(_ s: String) -> String {
+        return s.count <= 34 ? s : String(s.prefix(33)) + "…"
+    }
+
+    func apply(_ state: ServerState, _ memoryGB: Double, _ model: String = "") {
         let color: NSColor
         switch state {
         case .running:
@@ -626,6 +652,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         memLine.title = state == .stopped
             ? tr("status.memfree")
             : tr("status.mem", memoryGB)
+        modelLine.title = model.isEmpty
+            ? tr("status.modelnone")
+            : tr("status.model", model)
         item.button?.attributedTitle = NSAttributedString(string: " ●", attributes: [
             .foregroundColor: color,
             .font: NSFont.systemFont(ofSize: 9)

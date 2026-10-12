@@ -55,6 +55,9 @@
 "status.loading" = "Splash se inicia / cargando el modelo …";
 "status.mem" = "Memoria: %1$.1f GB";
 "status.memfree" = "Memoria: libre";
+"status.model" = "Modelo: %1$@";
+"status.modelnone" = "Modelo: —";
+"status.modelchecking" = "Modelo: …";
 "status.running" = "Splash está funcionando · %1$@";
 "status.searchingreleases" = "Buscando versiones de Splash disponibles …";
 "status.stopped" = "Splash está detenido";

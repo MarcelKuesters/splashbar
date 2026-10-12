@@ -55,6 +55,9 @@
 "status.loading" = "Splash 启动中/加载模型…";
 "status.mem" = "内存：%1$.1f GB";
 "status.memfree" = "内存：空闲";
+"status.model" = "模型：%1$@";
+"status.modelnone" = "模型：—";
+"status.modelchecking" = "模型：…";
 "status.running" = "Splash 运行中 · %1$@";
 "status.searchingreleases" = "正在搜索可用的Splash版本…";
 "status.stopped" = "Splash 已停止";
