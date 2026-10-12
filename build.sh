@@ -4,8 +4,11 @@ set -e
 # (e.g. ~/github/splashbar on this machine, any clone on a CI runner).
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP=/Applications/SplashBar.app
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 swiftc -O -swift-version 5 -o "$APP/Contents/MacOS/SplashBar" "$SRC/main.swift" -framework Cocoa
+# Localized resources: Resources/<code>.lproj/Localizable.strings
+rm -rf "$APP/Contents/Resources/"*.lproj
+cp -R "$SRC/Resources/"*.lproj "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -15,6 +18,16 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
  <key>CFBundleExecutable</key><string>SplashBar</string>
  <key>CFBundlePackageType</key><string>APPL</string>
  <key>CFBundleShortVersionString</key><string>1.0</string>
+ <key>CFBundleDevelopmentRegion</key><string>de</string>
+ <key>CFBundleLocalizations</key><array>
+  <string>de</string>
+  <string>en</string>
+  <string>fr</string>
+  <string>es</string>
+  <string>ja</string>
+  <string>zh</string>
+  <string>ru</string>
+ </array>
  <key>LSMinimumSystemVersion</key><string>14.0</string>
  <key>LSUIElement</key><true/>
 </dict></plist>

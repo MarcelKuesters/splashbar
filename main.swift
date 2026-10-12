@@ -183,18 +183,18 @@ func compareVersions(_ lhs: String, _ rhs: String) -> ComparisonResult? {
 }
 
 func compatibilityLabel(for modelID: String, splashVersion: String) -> String {
-    guard versionComponents(splashVersion) != nil else { return "? совместимость не проверена" }
+    guard versionComponents(splashVersion) != nil else { return tr("model.compat.unknown") }
     if modelID.hasSuffix("-Splash") {
         return compareVersions(splashVersion, "1.3.0") != .orderedDescending
-            ? "✓ совместима до Splash 1.3.0"
-            : "✕ несовместима с Splash 1.3.1+"
+            ? tr("model.compat.until")
+            : tr("model.compat.incompat")
     }
     if suggestedModelIDs.contains(modelID) {
         return compareVersions(splashVersion, "1.1.0") != .orderedAscending
-            ? "✓ совместима"
-            : "? совместимость не проверена для этой версии"
+            ? tr("model.compat.ok")
+            : tr("model.compat.unverified")
     }
-    return "? совместимость не проверена"
+    return tr("model.compat.unknown")
 }
 
 func modelPayloadExists(in directory: URL) -> Bool {
@@ -306,7 +306,7 @@ func availableLocalModels(additionalPath: String) -> [LocalModel] {
     paths.append((NSHomeDirectory() + "/.cache/huggingface/hub", "Splash / Hugging Face"))
     paths.append((NSHomeDirectory() + "/.lmstudio/models", "LM Studio"))
     if !additionalPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        paths.append((additionalPath, "Дополнительная папка"))
+        paths.append((additionalPath, tr("model.source.additional")))
     }
 
     var results: [LocalModel] = []
@@ -322,10 +322,10 @@ func availableLocalModels(additionalPath: String) -> [LocalModel] {
 func availableModelChoices(additionalPath: String, splashVersion: String, preserving selectedModelID: String?) -> (compatible: [String], other: [String]) {
     var models = availableLocalModels(additionalPath: additionalPath)
     for id in suggestedModelIDs where !models.contains(where: { $0.id == id }) {
-        models.append(LocalModel(id: id, source: "предложение Splash"))
+        models.append(LocalModel(id: id, source: tr("model.source.suggested")))
     }
     if let selectedModelID, !selectedModelID.isEmpty, !models.contains(where: { $0.id == selectedModelID }) {
-        models.append(LocalModel(id: selectedModelID, source: "выбрана сейчас"))
+        models.append(LocalModel(id: selectedModelID, source: tr("model.source.selected")))
     }
 
     let orderedModels = models.sorted { $0.id.localizedCaseInsensitiveCompare($1.id) == .orderedAscending }
@@ -380,6 +380,16 @@ func splashExecutablePath() -> String? {
     executablePath("splash", candidates: ["/opt/homebrew/bin/splash", "/usr/local/bin/splash"])
 }
 
+// Localizes a key from the app's .lproj resources. The development language is
+// German; if the user's system language has no translation file, AppKit falls
+// back to it automatically (see CFBundleDevelopmentRegion in Info.plist).
+// Missing keys resolve to the key itself, which keeps gaps visible.
+func tr(_ key: String, _ args: CVarArg...) -> String {
+    let format = Bundle.main.localizedString(forKey: key, value: key, table: nil)
+    guard !args.isEmpty else { return format }
+    return String(format: format, locale: Locale.current, arguments: args)
+}
+
 func brewExecutablePath() -> String? {
     executablePath("brew", candidates: ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"])
 }
@@ -426,9 +436,9 @@ func availableSplashReleases() -> [SplashRelease] {
 }
 
 func splashVersion() -> String {
-    guard let executable = splashExecutablePath() else { return "не установлен" }
+    guard let executable = splashExecutablePath() else { return tr("model.notinstalled") }
     let result = runCommand(executable, ["--version"])
-    return result.status == 0 ? result.output : "не удалось определить"
+    return result.status == 0 ? result.output : tr("model.versionunknown")
 }
 
 func readAgentPlist(at path: String) -> [String: Any]? {
@@ -500,9 +510,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let uid = getuid()
     var settings = SplashBarSettings()
     var item: NSStatusItem!
-    let statusLine = NSMenuItem(title: "Status wird geprüft …", action: nil, keyEquivalent: "")
+    let statusLine = NSMenuItem(title: tr("status.checking"), action: nil, keyEquivalent: "")
     let memLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-    let versionLine = NSMenuItem(title: "Splash-Version wird geprüft …", action: nil, keyEquivalent: "")
+    let versionLine = NSMenuItem(title: tr("status.versionchecking"), action: nil, keyEquivalent: "")
     var startItem: NSMenuItem!
     var stopItem: NSMenuItem!
     var restartItem: NSMenuItem!
@@ -546,16 +556,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(memLine)
         menu.addItem(versionLine)
         menu.addItem(.separator())
-        startItem = add(menu, "Starten", #selector(start))
-        stopItem = add(menu, "Stoppen (RAM freigeben)", #selector(stop))
-        restartItem = add(menu, "Neu starten", #selector(restart))
+        startItem = add(menu, tr("menu.start"), #selector(start))
+        stopItem = add(menu, tr("menu.stop"), #selector(stop))
+        restartItem = add(menu, tr("menu.restart"), #selector(restart))
         menu.addItem(.separator())
-        _ = add(menu, "Chat im Browser öffnen", #selector(openChat))
-        _ = add(menu, "Protokoll anzeigen", #selector(openLog))
-        _ = add(menu, "Einstellungen …", #selector(configure))
-        versionItem = add(menu, "Splash-Version auswählen …", #selector(chooseSplashVersion))
+        _ = add(menu, tr("menu.chat"), #selector(openChat))
+        _ = add(menu, tr("menu.log"), #selector(openLog))
+        _ = add(menu, tr("menu.settings"), #selector(configure))
+        versionItem = add(menu, tr("menu.version"), #selector(chooseSplashVersion))
         menu.addItem(.separator())
-        _ = add(menu, "SplashBar beenden", #selector(quit))
+        _ = add(menu, tr("menu.quit"), #selector(quit))
         item.menu = menu
         refresh()
         refreshSplashVersion()
@@ -602,20 +612,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         switch state {
         case .running:
             color = .systemGreen
-            statusLine.title = "Splash läuft · \(serverAddress(for: settings.serverURL))"
+            statusLine.title = tr("status.running", serverAddress(for: settings.serverURL))
         case .idle:
             color = .systemBlue
-            statusLine.title = "Splash ruht · Modell entladen (lädt bei Anfrage) · ~\(Int(settings.refreshInterval)) s"
+            statusLine.title = tr("status.idle", Int(settings.refreshInterval))
         case .loading:
             color = .systemOrange
-            statusLine.title = "Splash startet / lädt Modell …"
+            statusLine.title = tr("status.loading")
         case .stopped:
             color = .systemGray
-            statusLine.title = "Splash ist gestoppt"
+            statusLine.title = tr("status.stopped")
         }
         memLine.title = state == .stopped
-            ? "Arbeitsspeicher: frei"
-            : String(format: "Arbeitsspeicher: %.1f GB", memoryGB)
+            ? tr("status.memfree")
+            : tr("status.mem", memoryGB)
         item.button?.attributedTitle = NSAttributedString(string: " ●", attributes: [
             .foregroundColor: color,
             .font: NSFont.systemFont(ofSize: 9)
@@ -630,7 +640,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DispatchQueue.global(qos: .utility).async {
             let version = splashVersion()
             DispatchQueue.main.async {
-                self.versionLine.title = "Splash: \(version)"
+                self.versionLine.title = tr("status.version", version)
             }
         }
     }
@@ -677,10 +687,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func configure() {
         let currentSplashVersion = splashVersion()
         let alert = NSAlert()
-        alert.messageText = "SplashBar Einstellungen"
-        alert.informativeText = "Splash \(currentSplashVersion). Модели обнаруживаются в кэше Splash/Hugging Face и LM Studio. Списки разделены по совместимости; непроверенные модели помещены в нижний список. Можно добавить папку поиска или ввести ID вручную."
-        alert.addButton(withTitle: "Speichern")
-        alert.addButton(withTitle: "Abbrechen")
+        alert.messageText = tr("settings.title")
+        alert.informativeText = tr("settings.info", currentSplashVersion)
+        alert.addButton(withTitle: tr("settings.save"))
+        alert.addButton(withTitle: tr("settings.cancel"))
 
         let compatibleModelField = NSComboBox()
         let otherModelField = NSComboBox()
@@ -706,17 +716,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         customModelField.delegate = modelSelectionCoordinator
 
         let fields: [(String, NSTextField)] = [
-            ("Server-URL", NSTextField(string: settings.serverURL.absoluteString)),
-            ("✓ Passend für Splash \(currentSplashVersion)", compatibleModelField),
-            ("✕ Unpassend / ungeprüft", otherModelField),
-            ("Eigene Modell-ID (--model)", customModelField),
-            ("LaunchAgent-Label", NSTextField(string: settings.launchdLabel)),
-            ("LaunchAgent-Plist", NSTextField(string: settings.agentPlistPath)),
-            ("Protokollpfad", NSTextField(string: settings.logPath)),
-            ("Aktualisierung (Sek.)", NSTextField(string: String(settings.refreshInterval))),
-            ("API-Timeout (Sek.)", NSTextField(string: String(settings.requestTimeout))),
-            ("Idle-Grenze (GB)", NSTextField(string: String(settings.idleThresholdGB))),
-            ("Zusätzlicher Modellpfad", additionalPathField)
+            (tr("settings.field.url"), NSTextField(string: settings.serverURL.absoluteString)),
+            (tr("settings.field.compatible", currentSplashVersion), compatibleModelField),
+            (tr("settings.field.other"), otherModelField),
+            (tr("settings.field.custom"), customModelField),
+            (tr("settings.field.agent"), NSTextField(string: settings.launchdLabel)),
+            (tr("settings.field.plist"), NSTextField(string: settings.agentPlistPath)),
+            (tr("settings.field.log"), NSTextField(string: settings.logPath)),
+            (tr("settings.field.refresh"), NSTextField(string: String(settings.refreshInterval))),
+            (tr("settings.field.timeout"), NSTextField(string: String(settings.requestTimeout))),
+            (tr("settings.field.idle"), NSTextField(string: String(settings.idleThresholdGB))),
+            (tr("settings.field.addpath"), additionalPathField)
         ]
 
         let form = NSView(frame: NSRect(x: 0, y: 0, width: 720, height: CGFloat(fields.count) * 38))
@@ -731,7 +741,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         additionalModelsPathField = additionalPathField
-        let browseButton = NSButton(title: "Durchsuchen …", target: self, action: #selector(chooseAdditionalModelsPath(_:)))
+        let browseButton = NSButton(title: tr("settings.browse"), target: self, action: #selector(chooseAdditionalModelsPath(_:)))
         browseButton.frame = NSRect(x: 630, y: 6, width: 82, height: 24)
         browseButton.bezelStyle = .rounded
         form.addSubview(browseButton)
@@ -779,16 +789,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let modelChanged = requestedModel != currentAgentModel
             if modelChanged {
                 guard isLocalServerURL(serverURL) else {
-                    showSettingsError("Die Modellverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt.")
+                    showSettingsError(tr("settings.error.agent"))
                     return
                 }
                 let oldTarget = "gui/\(uid)/\(settings.launchdLabel)"
                 let serviceLoaded = !sh("launchctl print \(shellQuote(oldTarget)) >/dev/null 2>&1 && echo yes").isEmpty
                 if serviceLoaded {
                     let restartAlert = NSAlert()
-                    restartAlert.messageText = "Splash-Modell wechseln?"
-                    restartAlert.informativeText = "Der laufende Server wird neu gestartet. Falls das Modell noch nicht vorhanden ist, kann Splash es herunterladen und dabei viel Speicherplatz und Arbeitsspeicher verwenden."
-                    restartAlert.addButton(withTitle: "Wechseln und neu starten")
+                    restartAlert.messageText = tr("model.restart")
+                    restartAlert.informativeText = tr("model.restart.detail")
+                    restartAlert.addButton(withTitle: tr("model.restart.switch"))
                     restartAlert.addButton(withTitle: "Abbrechen")
                     guard runClosableAlert(restartAlert) == .alertFirstButtonReturn else { return }
                 }
@@ -834,7 +844,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let path = expandedPath(updatedSettings.agentPlistPath)
         let oldPath = expandedPath(previousSettings.agentPlistPath)
         if restartLoadedService && path != oldPath {
-            return "Bitte den LaunchAgent-Pfad getrennt ändern, bevor das Modell gewechselt wird."
+            return tr("validate.labelfirst")
         }
 
         let fileManager = FileManager.default
@@ -844,7 +854,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let oldData {
             guard let value = try? PropertyListSerialization.propertyList(from: oldData, options: [], format: nil),
                   let dictionary = value as? [String: Any] else {
-                return "Die LaunchAgent-Plist ist ungültig und wurde nicht geändert."
+                return tr("validate.plist")
             }
             plist = dictionary
         }
@@ -852,12 +862,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var arguments = plist["ProgramArguments"] as? [String] ?? []
         if arguments.isEmpty {
             guard let splashPath = splashExecutablePath() else {
-                return "Splash wurde nicht gefunden. Bitte installiere Splash zuerst mit Homebrew."
+                return tr("validate.noagent")
             }
             let port = updatedSettings.serverURL.port ?? 8080
             arguments = [splashPath, "serve", "--port", String(port)]
         } else if !arguments.contains("serve") && !arguments.contains(where: { URL(fileURLWithPath: $0).lastPathComponent == "splash" }) {
-            return "Die angegebene LaunchAgent-Plist startet kein Splash-Serve und wurde nicht geändert."
+            return tr("validate.badplist")
         }
 
         let port = String(updatedSettings.serverURL.port ?? 8080)
@@ -888,13 +898,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let oldTarget = "gui/\(uid)/\(previousSettings.launchdLabel)"
         let newTarget = "gui/\(uid)/\(updatedSettings.launchdLabel)"
         if newTarget != oldTarget && !sh("launchctl print \(shellQuote(newTarget)) >/dev/null 2>&1 && echo yes").isEmpty {
-            return "Der neue LaunchAgent-Label ist bereits geladen. Bitte wähle einen anderen Label."
+            return tr("validate.labeltaken")
         }
 
         if restartLoadedService {
             let stopped = runCommand("/bin/launchctl", ["bootout", oldTarget])
             guard stopped.status == 0 else {
-                return "Splash konnte vor dem Modellwechsel nicht gestoppt werden: \(stopped.output)"
+                return tr("validate.stopfailed", stopped.output)
             }
         }
 
@@ -908,7 +918,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if restartLoadedService {
                 _ = runCommand("/bin/launchctl", ["bootstrap", "gui/\(uid)", oldPath])
             }
-            return "LaunchAgent-Konfiguration konnte nicht gespeichert werden: \(error.localizedDescription)"
+            return tr("validate.savfailed", error.localizedDescription)
         }
 
         guard restartLoadedService else { return nil }
@@ -920,7 +930,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 try? fileManager.removeItem(at: plistURL)
             }
             _ = runCommand("/bin/launchctl", ["bootstrap", "gui/\(uid)", oldPath])
-            return "Neue LaunchAgent-Konfiguration konnte nicht gestartet werden: \(started.output)"
+            return tr("validate.startfailed", started.output)
         }
         return nil
     }
@@ -935,11 +945,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return components.url
     }
 
-    func showSettingsError(_ message: String = "Bitte URL, Modell-ID, LaunchAgent-Angaben und positive Zahlenwerte prüfen.") {
+    func showSettingsError(_ message: String = tr("settings.invalid.detail")) {
         let error = NSAlert()
-        error.messageText = "Ungültige Einstellungen"
+        error.messageText = tr("settings.invalid")
         error.informativeText = message
-        error.addButton(withTitle: "OK")
+        error.addButton(withTitle: tr("settings.ok"))
         _ = runClosableAlert(error)
     }
 
@@ -969,9 +979,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func chooseAdditionalModelsPath(_ sender: NSButton) {
         guard let field = additionalModelsPathField else { return }
         let panel = NSOpenPanel()
-        panel.title = "Modellordner auswählen"
-        panel.message = "Wähle einen zusätzlichen Ordner, in dem SplashBar nach Modellen suchen soll."
-        panel.prompt = "Auswählen"
+        panel.title = tr("model.pick.title")
+        panel.message = tr("model.pick.message")
+        panel.prompt = tr("model.pick.prompt")
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -1016,8 +1026,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         otherField.removeAllItems()
         compatibleField.addItems(withObjectValues: choices.compatible)
         otherField.addItems(withObjectValues: choices.other)
-        compatibleField.placeholderString = "Нет обнаруженных моделей"
-        otherField.placeholderString = "Нет обнаруженных моделей"
+        compatibleField.placeholderString = tr("model.placeholder")
+        otherField.placeholderString = tr("model.placeholder")
         compatibleField.stringValue = ""
         otherField.stringValue = ""
         customField.stringValue = ""
@@ -1034,12 +1044,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func chooseSplashVersion() {
         guard let brew = brewExecutablePath() else {
-            showSettingsError("Homebrew wurde nicht gefunden. Bitte installiere Splash zuerst mit Homebrew.")
+            showSettingsError(tr("settings.error.brew"))
             return
         }
 
         isUpdatingSplash = true
-        statusLine.title = "Verfügbare Splash-Versionen werden gesucht …"
+        statusLine.title = tr("status.searchingreleases")
         versionItem.isEnabled = false
         startItem.isEnabled = false
         stopItem.isEnabled = false
@@ -1050,7 +1060,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DispatchQueue.main.async {
                 guard !releases.isEmpty else {
                     self.finishVersionChange()
-                    self.showSettingsError("Die veröffentlichten Splash-Versionen konnten nicht von GitHub geladen werden. Prüfe die Internetverbindung und versuche es erneut.")
+                    self.showSettingsError(tr("settings.error.releases"))
                     return
                 }
 
@@ -1062,12 +1072,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
 
                 let alert = NSAlert()
-                alert.messageText = "Splash-Version auswählen"
-                let details = "Installiert: \(splashVersion()). Die Liste enthält veröffentlichte stabile Releases mit einem passenden macOS-ARM64-Installationsarchiv und SHA-256-Datei. Ein laufender Splash-Server wird während des Wechsels gestoppt und danach wieder gestartet.\n\nPrüfe vor dem Wechsel die Kompatibilität mit deinem Modell."
+                alert.messageText = tr("version.pick.title")
+                let details = tr("version.pick.detail", splashVersion())
                 alert.informativeText = details
                 alert.accessoryView = selector
-                alert.addButton(withTitle: "Installieren / wechseln")
-                alert.addButton(withTitle: "Abbrechen")
+                alert.addButton(withTitle: tr("version.switch"))
+                alert.addButton(withTitle: tr("settings.cancel"))
                 guard self.runClosableAlert(alert) == .alertFirstButtonReturn else {
                     self.finishVersionChange()
                     return
@@ -1130,7 +1140,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 versionChangeDiagnostics.end()
                 DispatchQueue.main.async {
                     self.finishVersionChange()
-                    self.completeVersionProgress(error: "Das ausgewählte Release ist nicht mehr in der GitHub-Releaseliste verfügbar.", logURL: logURL)
+                    self.completeVersionProgress(error: tr("version.error.releasegone"), logURL: logURL)
                 }
                 return
             }
@@ -1138,7 +1148,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if wasLoaded {
                 let stopped = runCommand("/bin/launchctl", ["kill", "SIGTERM", serviceTarget])
                 if stopped.status != 0 || !self.waitForServiceToStop(serviceTarget) {
-                    errorText = "Der laufende Splash-Server konnte nicht zuverlässig gestoppt werden. Die Version wurde nicht gewechselt. \(stopped.output)"
+                    errorText = tr("version.error.stopstuck", stopped.output)
                 }
             }
 
@@ -1148,13 +1158,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if localTap.status != 0 {
                     let createdTap = runCommand(brew, ["tap-new", "--no-git", "splashbar/splash-versions"])
                     if createdTap.status != 0 {
-                        errorText = "Der lokale Tap für Release-Versionen konnte nicht erstellt werden:\n\(createdTap.output)"
+                        errorText = tr("version.error.tapfailed", createdTap.output)
                     }
                 }
                 if errorText == nil {
                     let checksum = self.downloadedChecksum(for: release)
                     if checksum == nil || !self.writeReleaseFormula(release, checksum: checksum ?? "", using: brew) {
-                        errorText = "Die Prüfsumme oder Homebrew-Formel für Splash \(version) konnte nicht erstellt werden."
+                        errorText = tr("version.error.checksumfailed", version)
                     }
                 }
 
@@ -1198,7 +1208,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if wasLoaded {
                 let restarted = runCommand("/bin/launchctl", ["kickstart", "-k", serviceTarget])
                 if restarted.status != 0 {
-                    restartText = "Splash konnte nach dem Update nicht gestartet werden:\n\(restarted.output)"
+                    restartText = tr("version.error.notstarted", restarted.output)
                 }
             }
 
@@ -1215,14 +1225,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let failureText = [errorText, restartText].compactMap { $0 }.joined(separator: "\n\n")
             DispatchQueue.main.async {
                 self.finishVersionChange()
-                self.versionLine.title = "Splash: \(installedVersion)"
+                self.versionLine.title = tr("status.version", installedVersion)
                 self.refresh()
                 if failureText.isEmpty && targetAvailable {
-                    self.completeVersionProgress(message: "Splash-Version wurde gewechselt. Installierte Version: \(installedVersion)", logURL: logURL)
+                    self.completeVersionProgress(message: tr("version.success", installedVersion), logURL: logURL)
                 } else {
                     let briefError = restartText != nil
-                        ? "Die Version wurde gewechselt, aber Splash konnte anschließend nicht gestartet werden."
-                        : "Die ausgewählte Splash-Version konnte nicht installiert oder aktiviert werden."
+                        ? tr("version.error.restart")
+                        : tr("version.error.install")
                     self.completeVersionProgress(error: briefError, logURL: logURL)
                 }
             }
@@ -1242,11 +1252,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "SplashBar"
+        window.title = tr("window.title")
         window.isReleasedWhenClosed = false
 
         let content = NSView(frame: NSRect(x: 0, y: 0, width: 540, height: 230))
-        let text = NSTextField(wrappingLabelWithString: "Splash \(version) wird installiert.\nDer Vorgang läuft; bitte warte, bis er abgeschlossen ist.")
+        let text = NSTextField(wrappingLabelWithString: tr("version.installing", version))
         text.frame = NSRect(x: 24, y: 76, width: 492, height: 130)
         text.font = .systemFont(ofSize: 14)
         content.addSubview(text)
@@ -1257,12 +1267,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         spinner.startAnimation(nil)
         content.addSubview(spinner)
 
-        let logButton = NSButton(title: "Fehlerprotokoll öffnen", target: self, action: #selector(openVersionChangeLog))
+        let logButton = NSButton(title: tr("version.progresslog"), target: self, action: #selector(openVersionChangeLog))
         logButton.frame = NSRect(x: 268, y: 18, width: 150, height: 28)
         logButton.isHidden = true
         content.addSubview(logButton)
 
-        let closeButton = NSButton(title: "Schließen", target: self, action: #selector(closeVersionProgress))
+        let closeButton = NSButton(title: tr("settings.close"), target: self, action: #selector(closeVersionProgress))
         closeButton.frame = NSRect(x: 426, y: 18, width: 82, height: 28)
         closeButton.bezelStyle = .rounded
         closeButton.isHidden = true
@@ -1283,13 +1293,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         versionProgressSpinner?.stopAnimation(nil)
         versionProgressSpinner?.isHidden = true
         versionProgressText?.stringValue = error.map { briefError in
-            "Fehler beim Wechsel der Splash-Version.\n\n\(briefError)\n\nVollständiges Fehlerprotokoll / Stacktrace: \(logURL?.path ?? "Datei konnte nicht erstellt werden")"
-        } ?? (message ?? "Der Vorgang wurde abgeschlossen.")
+            tr("version.error.text", briefError, logURL?.path ?? tr("version.error.donelog"))
+        } ?? (message ?? tr("version.progressdone"))
         versionProgressLogURL = logURL
         versionLogButton?.isHidden = error == nil || logURL == nil
         versionCloseButton?.isHidden = false
         if error != nil, logURL == nil {
-            versionProgressText?.stringValue += "\n\nDas Fehlerprotokoll konnte nicht gespeichert werden."
+            versionProgressText?.stringValue += "\n\n\(tr("version.error.donelog"))"
         }
     }
 

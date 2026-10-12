@@ -1,0 +1,97 @@
+// SplashBar — localized strings
+// Development language: German. A missing key shows up verbatim in the UI
+// on purpose, so gaps stay visible during development.
+
+"menu.chat" = "在浏览器中打开聊天";
+"menu.log" = "查看日志";
+"menu.quit" = "退出SplashBar";
+"menu.restart" = "重启";
+"menu.settings" = "设置…";
+"menu.start" = "启动";
+"menu.stop" = "停止（释放内存）";
+"menu.version" = "选择Splash版本…";
+"model.compat.incompat" = "✕ Splash 1.3.1 起不兼容";
+"model.compat.ok" = "✓ 兼容";
+"model.compat.unknown" = "? 未验证";
+"model.compat.until" = "✓ 兼容至 Splash 1.3.0";
+"model.compat.unverified" = "? 此版本未验证";
+"model.notinstalled" = "未安装";
+"model.pick.message" = "选择 SplashBar 搜索模型的其他文件夹。";
+"model.pick.prompt" = "选择";
+"model.pick.title" = "选择模型文件夹";
+"model.placeholder" = "未找到模型";
+"model.restart" = "要切换Splash模型吗？";
+"model.restart.detail" = "正在运行的服务器将被重启。如果模型尚不存在，Splash 可能会下载它，占用大量磁盘空间和内存。";
+"model.restart.switch" = "切换并重启";
+"model.source.additional" = "附加文件夹";
+"model.source.selected" = "当前选中";
+"model.source.suggested" = "Splash 建议";
+"model.versionunknown" = "版本未知";
+"settings.browse" = "浏览…";
+"settings.cancel" = "取消";
+"settings.close" = "关闭";
+"settings.error.agent" = "通过本地 LaunchAgent 管理模型仅在服务器 URL 指向 localhost 或 127.0.0.1 时可用。";
+"settings.error.brew" = "未找到 Homebrew。请先用 Homebrew 安装 Splash。";
+"settings.error.releases" = "无法从 GitHub 加载已发布的 Splash 版本。请检查网络连接并重试。";
+"settings.field.addpath" = "附加模型路径";
+"settings.field.agent" = "LaunchAgent 标签";
+"settings.field.compatible" = "✓ 兼容 Splash %1$@";
+"settings.field.custom" = "自定义模型 ID（--model）";
+"settings.field.idle" = "空闲阈值（GB）";
+"settings.field.log" = "日志路径";
+"settings.field.other" = "✕ 不兼容/未验证";
+"settings.field.plist" = "LaunchAgent Plist";
+"settings.field.refresh" = "刷新间隔（秒）";
+"settings.field.timeout" = "API 超时（秒）";
+"settings.field.url" = "服务器 URL";
+"settings.info" = "Splash %1$@。模型从 Splash/Hugging Face 缓存和 LM Studio 中发现。列表按兼容性分组；未验证的模型在下列表。可添加搜索文件夹或手动输入 ID。";
+"settings.invalid" = "无效设置";
+"settings.invalid.detail" = "请检查 URL、模型 ID、LaunchAgent 配置和正数值。";
+"settings.ok" = "OK";
+"settings.save" = "保存";
+"settings.title" = "SplashBar 设置";
+"status.checking" = "正在检查状态…";
+"status.idle" = "Splash 空闲 · 模型已卸载（按需加载） · 约%1$d秒";
+"status.loading" = "Splash 启动中/加载模型…";
+"status.mem" = "内存：%1$.1f GB";
+"status.memfree" = "内存：空闲";
+"status.running" = "Splash 运行中 · %1$@";
+"status.searchingreleases" = "正在搜索可用的Splash版本…";
+"status.stopped" = "Splash 已停止";
+"status.version" = "Splash：%1$@";
+"status.versionchecking" = "正在检查Splash版本…";
+"validate.agenturl" = "通过本地 LaunchAgent 管理模型仅在服务器 URL 指向 localhost 或 127.0.0.1 时可用。";
+"validate.badplist" = "给定的 LaunchAgent Plist 不会启动 Splash 服务器，未被修改。";
+"validate.labelfirst" = "请在切换模型之前单独修改 LaunchAgent 路径。";
+"validate.labeltaken" = "新的 LaunchAgent 标签已加载。请选择其他标签。";
+"validate.noagent" = "未找到 Splash。请先用 Homebrew 安装。";
+"validate.plist" = "LaunchAgent Plist 无效，未被修改。";
+"validate.savfailed" = "无法保存 LaunchAgent 配置：%1$@";
+"validate.startfailed" = "无法启动新的 LaunchAgent 配置：%1$@";
+"validate.stopfailed" = "切换模型前无法停止 Splash：%1$@";
+"version.error.donelog" = "无法保存错误日志。";
+"version.error.install" = "无法安装或启用所选的 Splash 版本。";
+"version.error.notstarted" = "更新后无法启动 Splash：
+%1$@";
+"version.error.restart" = "版本已切换，但之后无法启动 Splash。";
+"version.error.text" = "切换 Splash 版本时出错。
+
+%1$@
+
+完整错误日志/堆栈跟踪：%2$@";
+"version.installing" = "正在安装 Splash %1$@。
+操作进行中，请等待完成。";
+"version.pick.detail" = "已安装：%1$@。列表包含带有匹配 macOS ARM64 安装存档和 SHA-256 文件的已发布稳定版。切换期间会停止正在运行的 Splash 服务器，之后再次启动。
+
+切换前请检查与你的模型的兼容性。";
+"version.pick.title" = "选择Splash版本";
+"version.progressdone" = "操作已完成。";
+"version.progresslog" = "打开错误日志";
+"version.success" = "Splash 版本已切换。已安装版本：%1$@";
+"version.switch" = "安装/切换";
+"window.title" = "SplashBar";
+"version.error.releasegone" = "所选版本在 GitHub 版本列表中不可用。";
+"version.error.stopstuck" = "无法可靠停止正在运行的 Splash 服务器。版本未切换。%1$@";
+"version.error.tapfailed" = "无法创建用于 release 版本的本地 tap：
+%1$@";
+"version.error.checksumfailed" = "无法为 Splash %1$@ 创建校验和或 Homebrew 公式。";

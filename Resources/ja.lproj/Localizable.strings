@@ -1,0 +1,97 @@
+// SplashBar — localized strings
+// Development language: German. A missing key shows up verbatim in the UI
+// on purpose, so gaps stay visible during development.
+
+"menu.chat" = "ブラウザでチャットを開く";
+"menu.log" = "ログを表示";
+"menu.quit" = "SplashBarを終了";
+"menu.restart" = "再起動";
+"menu.settings" = "設定…";
+"menu.start" = "スタート";
+"menu.stop" = "停止（RAM解放）";
+"menu.version" = "Splashバージョンを選択…";
+"model.compat.incompat" = "✕ Splash 1.3.1 以降非互換";
+"model.compat.ok" = "✓ 互換";
+"model.compat.unknown" = "? 未確認";
+"model.compat.until" = "✓ Splash 1.3.0 まで互換";
+"model.compat.unverified" = "? このバージョンでは未確認";
+"model.notinstalled" = "未インストール";
+"model.pick.message" = "SplashBarがモデルを検索する追加のフォルダを選択してください。";
+"model.pick.prompt" = "選択";
+"model.pick.title" = "モデルフォルダを選択";
+"model.placeholder" = "モデルが見つかりません";
+"model.restart" = "Splashモデルを変更しますか？";
+"model.restart.detail" = "実行中のサーバーは再起動されます。モデルがまだない場合、Splashはダウンロードし、大量のディスク容量とメモリを使用する可能性があります。";
+"model.restart.switch" = "変更して再起動";
+"model.source.additional" = "追加のフォルダ";
+"model.source.selected" = "現在選択中";
+"model.source.suggested" = "Splash提案";
+"model.versionunknown" = "バージョン不明";
+"settings.browse" = "参照…";
+"settings.cancel" = "キャンセル";
+"settings.close" = "閉じる";
+"settings.error.agent" = "ローカルLaunchAgentによるモデル管理は、サーバーURLがlocalhostまたは127.0.0.1を指す場合のみ利用可能です。";
+"settings.error.brew" = "Homebrewが見つかりません。先にHomebrewでSplashをインストールしてください。";
+"settings.error.releases" = "GitHubから公開Splashバージョンを読み込めませんでした。インターネット接続を確認して再試行してください。";
+"settings.field.addpath" = "追加モデルパス";
+"settings.field.agent" = "LaunchAgentラベル";
+"settings.field.compatible" = "✓ Splash %1$@ に互換";
+"settings.field.custom" = "カスタムモデルID（--model）";
+"settings.field.idle" = "待機閾値（GB）";
+"settings.field.log" = "ログパス";
+"settings.field.other" = "✕ 非互換 / 未確認";
+"settings.field.plist" = "LaunchAgent Plist";
+"settings.field.refresh" = "更新間隔（秒）";
+"settings.field.timeout" = "APIタイムアウト（秒）";
+"settings.field.url" = "サーバーURL";
+"settings.info" = "Splash %1$@。モデルはSplash/Hugging FaceキャッシュとLM Studioから検出されます。リストは互換性別に分離され、未確認のモデルは下のリストに表示されます。検索フォルダの追加やIDの直接入力ができます。";
+"settings.invalid" = "無効な設定";
+"settings.invalid.detail" = "URL、モデルID、LaunchAgent設定、正の数値を確認してください。";
+"settings.ok" = "OK";
+"settings.save" = "保存";
+"settings.title" = "SplashBar設定";
+"status.checking" = "状態を確認中…";
+"status.idle" = "Splash待機中 · モデル解放（リクエスト時に読み込み） · 約%1$d秒";
+"status.loading" = "Splash起動中 / モデル読み込み中…";
+"status.mem" = "メモリ：%1$.1f GB";
+"status.memfree" = "メモリ：空き";
+"status.running" = "Splash稼働中 · %1$@";
+"status.searchingreleases" = "利用可能なSplashバージョンを検索中…";
+"status.stopped" = "Splash停止済み";
+"status.version" = "Splash：%1$@";
+"status.versionchecking" = "Splashバージョン確認中…";
+"validate.agenturl" = "ローカルLaunchAgentによるモデル管理は、サーバーURLがlocalhostまたは127.0.0.1を指す場合のみ利用可能です。";
+"validate.badplist" = "指定されたLaunchAgent PlistはSplashサーバーを起動しないため変更されませんでした。";
+"validate.labelfirst" = "モデルを切り替える前に、LaunchAgentパスを別途変更してください。";
+"validate.labeltaken" = "新しいLaunchAgentラベルはすでに読み込まれています。別のラベルを選択してください。";
+"validate.noagent" = "Splashが見つかりません。先にHomebrewでインストールしてください。";
+"validate.plist" = "LaunchAgent Plistが無効のため変更されませんでした。";
+"validate.savfailed" = "LaunchAgent設定を保存できませんでした：%1$@";
+"validate.startfailed" = "新しいLaunchAgent設定を起動できませんでした：%1$@";
+"validate.stopfailed" = "モデル切り替え前にSplashを停止できませんでした：%1$@";
+"version.error.donelog" = "エラーログを保存できませんでした。";
+"version.error.install" = "選択したSplashバージョンをインストールまたは有効化できませんでした。";
+"version.error.notstarted" = "アップデート後にSplashを起動できませんでした：
+%1$@";
+"version.error.restart" = "バージョンは切り替わりましたが、その後にSplashを起動できませんでした。";
+"version.error.text" = "Splashバージョンの切り替え中にエラーが発生しました。
+
+%1$@
+
+完全なエラーログ/スタックトレース：%2$@";
+"version.installing" = "Splash %1$@ をインストールしています。
+処理が進行中です。完了までお待ちください。";
+"version.pick.detail" = "インストール済み：%1$@。リストには、対応するmacOS ARM64インストールアーカイブとSHA-256ファイルを持つ公開安定版が含まれます。切り替え中は実行中のSplashサーバーを停止し、その後再開始します。
+
+切り替え前にモデルとの互換性を確認してください。";
+"version.pick.title" = "Splashバージョンを選択";
+"version.progressdone" = "処理が完了しました。";
+"version.progresslog" = "エラーログを開く";
+"version.success" = "Splashバージョンを切り替えました。インストール済みバージョン：%1$@";
+"version.switch" = "インストール/切り替え";
+"window.title" = "SplashBar";
+"version.error.releasegone" = "選択したReleaseはGitHubのリリースリストに存在しません。";
+"version.error.stopstuck" = "実行中のSplashサーバーを確実に停止できませんでした。バージョンは切り替わりませんでした。%1$@";
+"version.error.tapfailed" = "Releaseバージョン用ローカルTapを作成できませんでした：
+%1$@";
+"version.error.checksumfailed" = "Splash %1$@ のチェックサムまたはHomebrew公式を作成できませんでした。";

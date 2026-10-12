@@ -21,7 +21,7 @@ there's a low barrier to entry.
 ### Good first contributions
 
 - Showing the currently loaded model (from `GET /v1/models`) in the menu
-- Localizing the menu (currently English; German strings live in `main.swift`)
+- Extending the translations (de, en, fr, es, ja, zh are covered; see `Resources/<lang>.lproj/`)
 - An Apple Silicon memory readout that doesn't shell out to `footprint`
   (via `proc_info`/`host_statistics`)
 - A release workflow (`brew` tap or DMG in GitHub Actions)

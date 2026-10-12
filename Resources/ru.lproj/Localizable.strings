@@ -1,0 +1,97 @@
+// SplashBar — localized strings (Russian)
+// Development language: German. A missing key shows up verbatim in the UI
+// on purpose, so gaps stay visible during development.
+
+"menu.chat" = "Открыть чат в браузере";
+"menu.log" = "Показать журнал";
+"menu.quit" = "Выйти из SplashBar";
+"menu.restart" = "Перезапустить";
+"menu.settings" = "Настройки …";
+"menu.start" = "Запустить";
+"menu.stop" = "Остановить (освободить RAM)";
+"menu.version" = "Выбрать версию Splash …";
+"model.compat.incompat" = "✕ несовместимо с Splash 1.3.1+";
+"model.compat.ok" = "✓ совместимо";
+"model.compat.unknown" = "? не проверено";
+"model.compat.until" = "✓ совместимо до Splash 1.3.0";
+"model.compat.unverified" = "? не проверено для этой версии";
+"model.notinstalled" = "не установлен";
+"model.pick.message" = "Выберите дополнительную папку, в которой SplashBar будет искать модели.";
+"model.pick.prompt" = "Выбрать";
+"model.pick.title" = "Выбрать папку моделей";
+"model.placeholder" = "Модели не найдены";
+"model.restart" = "Сменить модель Splash?";
+"model.restart.detail" = "Работающий сервер будет перезапущен. Если модель ещё отсутствует, Splash может скачать её, используя много места на диске и памяти.";
+"model.restart.switch" = "Сменить и перезапустить";
+"model.source.additional" = "Дополнительная папка";
+"model.source.selected" = "Сейчас выбрана";
+"model.source.suggested" = "Предложение Splash";
+"model.versionunknown" = "не удалось определить";
+"settings.browse" = "Обзор …";
+"settings.cancel" = "Отмена";
+"settings.close" = "Закрыть";
+"settings.error.agent" = "Управление моделями через локальный LaunchAgent доступно только при URL сервера localhost или 127.0.0.1.";
+"settings.error.brew" = "Homebrew не найден. Сначала установите Splash через Homebrew.";
+"settings.error.releases" = "Не удалось загрузить опубликованные версии Splash с GitHub. Проверьте подключение к интернету и повторите.";
+"settings.field.addpath" = "Дополнительный путь к моделям";
+"settings.field.agent" = "Метка LaunchAgent";
+"settings.field.compatible" = "✓ Подходит для Splash %1$@";
+"settings.field.custom" = "Своя ID модели (--model)";
+"settings.field.idle" = "Порог простоя (ГБ)";
+"settings.field.log" = "Путь к журналу";
+"settings.field.other" = "✕ Не подходит / не проверено";
+"settings.field.plist" = "Plist LaunchAgent";
+"settings.field.refresh" = "Обновление (сек.)";
+"settings.field.timeout" = "Таймаут API (сек.)";
+"settings.field.url" = "URL сервера";
+"settings.info" = "Splash %1$@. Модели обнаруживаются в кэше Splash/Hugging Face и LM Studio. Списки разделены по совместимости; непроверенные модели помещены в нижний список. Можно добавить папку поиска или ввести ID вручную.";
+"settings.invalid" = "Некорректные настройки";
+"settings.invalid.detail" = "Проверьте URL, ID модели, параметры LaunchAgent и положительные числа.";
+"settings.ok" = "OK";
+"settings.save" = "Сохранить";
+"settings.title" = "Настройки SplashBar";
+"status.checking" = "Проверка статуса …";
+"status.idle" = "Splash в режиме ожидания · модель разгружена (загружается при запросе) · ~%1$d с";
+"status.loading" = "Splash запускается / загружает модель …";
+"status.mem" = "Память: %1$.1f ГБ";
+"status.memfree" = "Память: свободна";
+"status.running" = "Splash работает · %1$@";
+"status.searchingreleases" = "Поиск доступных версий Splash …";
+"status.stopped" = "Splash остановлен";
+"status.version" = "Splash: %1$@";
+"status.versionchecking" = "Проверка версии Splash …";
+"validate.agenturl" = "Управление моделями через локальный LaunchAgent доступно только при URL сервера localhost или 127.0.0.1.";
+"validate.badplist" = "Указанный plist LaunchAgent не запускает сервер Splash и не был изменён.";
+"validate.labelfirst" = "Сначала отдельно измените путь LaunchAgent, прежде чем менять модель.";
+"validate.labeltaken" = "Новая метка LaunchAgent уже загружена. Выберите другую метку.";
+"validate.noagent" = "Splash не найден. Сначала установите Splash через Homebrew.";
+"validate.plist" = "Plist LaunchAgent некорректна и не была изменена.";
+"validate.savfailed" = "Не удалось сохранить конфигурацию LaunchAgent: %1$@";
+"validate.startfailed" = "Не удалось запустить новую конфигурацию LaunchAgent: %1$@";
+"validate.stopfailed" = "Не удалось остановить Splash перед сменой модели: %1$@";
+"version.error.donelog" = "Не удалось сохранить журнал ошибок.";
+"version.error.install" = "Выбранную версию Splash не удалось установить или активировать.";
+"version.error.notstarted" = "Не удалось запустить Splash после обновления:
+%1$@";
+"version.error.restart" = "Версия была переключена, но запустить Splash после этого не удалось.";
+"version.error.text" = "Ошибка при переключении версии Splash.
+
+%1$@
+
+Полный журнал ошибок / трассировка: %2$@";
+"version.installing" = "Splash %1$@ устанавливается.
+Операция выполняется; подождите, пока она завершится.";
+"version.pick.detail" = "Установлена: %1$@. В списке — опубликованные стабильные версии с подходящим архивом для macOS ARM64 и файлом SHA-256. Работающий сервер Splash остановится на время переключения и затем запустится снова.
+
+Перед переключением проверьте совместимость с вашей моделью.";
+"version.pick.title" = "Выбрать версию Splash";
+"version.progressdone" = "Операция завершена.";
+"version.progresslog" = "Открыть журнал ошибок";
+"version.success" = "Версия Splash переключена. Установленная версия: %1$@";
+"version.switch" = "Установить / переключить";
+"window.title" = "SplashBar";
+"version.error.releasegone" = "Выбранный релиз больше не доступен в списке релизов GitHub.";
+"version.error.stopstuck" = "Не удалось надёжно остановить работающий сервер Splash. Версия не была переключена. %1$@";
+"version.error.tapfailed" = "Не удалось создать локальный tap для release-версий:
+%1$@";
+"version.error.checksumfailed" = "Не удалось создать контрольную сумму или формулу Homebrew для Splash %1$@.";

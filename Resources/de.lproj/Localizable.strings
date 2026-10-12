@@ -1,0 +1,97 @@
+// SplashBar — localized strings
+// Development language: German. A missing key shows up verbatim in the UI
+// on purpose, so gaps stay visible during development.
+
+"menu.chat" = "Chat im Browser öffnen";
+"menu.log" = "Protokoll anzeigen";
+"menu.quit" = "SplashBar beenden";
+"menu.restart" = "Neu starten";
+"menu.settings" = "Einstellungen …";
+"menu.start" = "Starten";
+"menu.stop" = "Stoppen (RAM freigeben)";
+"menu.version" = "Splash-Version auswählen …";
+"model.compat.incompat" = "✕ inkompatibel ab Splash 1.3.1";
+"model.compat.ok" = "✓ kompatibel";
+"model.compat.unknown" = "? nicht geprüft";
+"model.compat.until" = "✓ kompatibel bis Splash 1.3.0";
+"model.compat.unverified" = "? für diese Version nicht geprüft";
+"model.notinstalled" = "nicht installiert";
+"model.pick.message" = "Wähle einen zusätzlichen Ordner, in dem SplashBar nach Modellen suchen soll.";
+"model.pick.prompt" = "Auswählen";
+"model.pick.title" = "Modellordner auswählen";
+"model.placeholder" = "Keine Modelle gefunden";
+"model.restart" = "Splash-Modell wechseln?";
+"model.restart.detail" = "Der laufende Server wird neu gestartet. Falls das Modell noch nicht vorhanden ist, kann Splash es herunterladen und dabei viel Speicherplatz und Arbeitsspeicher verwenden.";
+"model.restart.switch" = "Wechseln und neu starten";
+"model.source.additional" = "Zusätzlicher Ordner";
+"model.source.selected" = "Aktuell ausgewählt";
+"model.source.suggested" = "Splash-Vorschlag";
+"model.versionunknown" = "Version unbekannt";
+"settings.browse" = "Durchsuchen …";
+"settings.cancel" = "Abbrechen";
+"settings.close" = "Schließen";
+"settings.error.agent" = "Die Modellverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt.";
+"settings.error.brew" = "Homebrew wurde nicht gefunden. Bitte installiere Splash zuerst mit Homebrew.";
+"settings.error.releases" = "Die veröffentlichten Splash-Versionen konnten nicht von GitHub geladen werden. Prüfe die Internetverbindung und versuche es erneut.";
+"settings.field.addpath" = "Zusätzlicher Modellpfad";
+"settings.field.agent" = "LaunchAgent-Label";
+"settings.field.compatible" = "✓ Passend für Splash %1$@";
+"settings.field.custom" = "Eigene Modell-ID (--model)";
+"settings.field.idle" = "Idle-Grenze (GB)";
+"settings.field.log" = "Protokollpfad";
+"settings.field.other" = "✕ Unpassend / ungeprüft";
+"settings.field.plist" = "LaunchAgent-Plist";
+"settings.field.refresh" = "Aktualisierung (Sek.)";
+"settings.field.timeout" = "API-Timeout (Sek.)";
+"settings.field.url" = "Server-URL";
+"settings.info" = "Splash %1$@. Modelle werden aus den Splash/Hugging-Face- und LM-Studio-Caches erkannt. Listen sind nach Kompatibilität getrennt; ungeprüfte Modelle erscheinen in der unteren Liste. Du kannst einen Suchordner hinzufügen oder eine ID manuell eingeben.";
+"settings.invalid" = "Ungültige Einstellungen";
+"settings.invalid.detail" = "Bitte URL, Modell-ID, LaunchAgent-Angaben und positive Zahlenwerte prüfen.";
+"settings.ok" = "OK";
+"settings.save" = "Speichern";
+"settings.title" = "SplashBar Einstellungen";
+"status.checking" = "Status wird geprüft …";
+"status.idle" = "Splash ruht · Modell entladen (lädt bei Anfrage) · ~%1$d s";
+"status.loading" = "Splash startet / lädt Modell …";
+"status.mem" = "Arbeitsspeicher: %1$.1f GB";
+"status.memfree" = "Arbeitsspeicher: frei";
+"status.running" = "Splash läuft · %1$@";
+"status.searchingreleases" = "Verfügbare Splash-Versionen werden gesucht …";
+"status.stopped" = "Splash ist gestoppt";
+"status.version" = "Splash: %1$@";
+"status.versionchecking" = "Splash-Version wird geprüft …";
+"validate.agenturl" = "Die Modellverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt.";
+"validate.badplist" = "Die angegebene LaunchAgent-Plist startet keinen Splash-Server und wurde nicht geändert.";
+"validate.labelfirst" = "Bitte den LaunchAgent-Pfad getrennt ändern, bevor das Modell gewechselt wird.";
+"validate.labeltaken" = "Der neue LaunchAgent-Label ist bereits geladen. Bitte wähle einen anderen Label.";
+"validate.noagent" = "Splash wurde nicht gefunden. Bitte installiere Splash zuerst mit Homebrew.";
+"validate.plist" = "Die LaunchAgent-Plist ist ungültig und wurde nicht geändert.";
+"validate.savfailed" = "LaunchAgent-Konfiguration konnte nicht gespeichert werden: %1$@";
+"validate.startfailed" = "Neue LaunchAgent-Konfiguration konnte nicht gestartet werden: %1$@";
+"validate.stopfailed" = "Splash konnte vor dem Modellwechsel nicht gestoppt werden: %1$@";
+"version.error.donelog" = "Das Fehlerprotokoll konnte nicht gespeichert werden.";
+"version.error.install" = "Die ausgewählte Splash-Version konnte nicht installiert oder aktiviert werden.";
+"version.error.notstarted" = "Splash konnte nach dem Update nicht gestartet werden:
+%1$@";
+"version.error.restart" = "Die Version wurde gewechselt, aber Splash konnte anschließend nicht gestartet werden.";
+"version.error.text" = "Fehler beim Wechsel der Splash-Version.
+
+%1$@
+
+Vollständiges Fehlerprotokoll / Stacktrace: %2$@";
+"version.installing" = "Splash %1$@ wird installiert.
+Der Vorgang läuft; bitte warte, bis er abgeschlossen ist.";
+"version.pick.detail" = "Installiert: %1$@. Die Liste enthält veröffentlichte stabile Releases mit einem passenden macOS-ARM64-Installationsarchiv und SHA-256-Datei. Ein laufender Splash-Server wird während des Wechsels gestoppt und danach wieder gestartet.
+
+Prüfe vor dem Wechsel die Kompatibilität mit deinem Modell.";
+"version.pick.title" = "Splash-Version auswählen";
+"version.progressdone" = "Der Vorgang wurde abgeschlossen.";
+"version.progresslog" = "Fehlerprotokoll öffnen";
+"version.success" = "Splash-Version wurde gewechselt. Installierte Version: %1$@";
+"version.switch" = "Installieren / wechseln";
+"window.title" = "SplashBar";
+"version.error.releasegone" = "Das ausgewählte Release ist nicht mehr in der GitHub-Releaseliste verfügbar.";
+"version.error.stopstuck" = "Der laufende Splash-Server konnte nicht zuverlässig gestoppt werden. Die Version wurde nicht gewechselt. %1$@";
+"version.error.tapfailed" = "Der lokale Tap für Release-Versionen konnte nicht erstellt werden:
+%1$@";
+"version.error.checksumfailed" = "Die Prüfsumme oder Homebrew-Formel für Splash %1$@ konnte nicht erstellt werden.";
