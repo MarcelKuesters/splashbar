@@ -2,7 +2,8 @@
 
 A tiny macOS menu bar app to control a local [Splash](https://github.com/incoai/splash)
 inference server: start/stop/restart the `launchctl` service, watch the model's
-GPU memory footprint, and jump straight to the built-in chat page.
+GPU memory footprint, see the model that is actually loaded, switch between
+published Splash releases, and jump straight to the built-in chat page.
 
 The status dot in the menu bar does the talking:
 
@@ -12,6 +13,10 @@ The status dot in the menu bar does the talking:
 | 🔵 blue | idle | loaded but unloaded to save memory (re-loads in ~5 s) |
 | 🟠 orange | loading | server up, pulling the model in |
 | ⚪ gray | stopped | agent stopped, memory freed |
+
+The menu below is shown in German because that is SplashBar's development
+language; all menus follow the macOS system language and are localized in
+seven languages (de, en, fr, es, ja, zh, ru).
 
 ![The SplashBar menu](docs/menu.png)
 
@@ -25,6 +30,7 @@ The status dot in the menu bar does the talking:
 - Opens the chat UI at `http://127.0.0.1:8080` and the server log
 - Selects the model ID passed to `splash serve --model`
 - Shows the installed Splash version and can install or switch between published stable GitHub releases
+- Shows the model that is currently loaded (live, from the server's `/v1/models`)
 
 No dependencies, no installer, no daemon of its own — one Swift file, built
 with the Swift toolchain that ships with macOS.
