@@ -23,6 +23,8 @@ The status dot in the menu bar does the talking:
   GPU/phys_footprint, not in RSS
 - Start / Stop (frees RAM + VRAM) / Restart without opening Terminal
 - Opens the chat UI at `http://127.0.0.1:8080` and the server log
+- Selects the model ID passed to `splash serve --model`
+- Shows the installed Splash version and can install or switch between published stable GitHub releases
 
 No dependencies, no installer, no daemon of its own — one Swift file, built
 with the Swift toolchain that ships with macOS.
@@ -59,9 +61,43 @@ without rebuilding the app.
 | Status refresh interval | 5 seconds |
 | API request timeout | 2 seconds |
 | Idle memory threshold | 3 GB |
+| Splash model ID | Read from the LaunchAgent; empty until configured |
+| Additional model search folder | None |
 
 The server URL is shared by the chat shortcut and the `/v1/models` health
-check. Paths may start with `~` to refer to your home directory.
+check. Paths may start with `~` to refer to your home directory. Choose a
+suggested model or enter a custom repository ID such as
+`mlx-community/Qwen3.8-27B-4bit` in the editable model field.
+Saving a new model updates the configured Splash LaunchAgent. If the server is
+already loaded, SplashBar asks before restarting it; if it is stopped, the
+LaunchAgent is prepared and the next **Starten** action starts it.
+
+The model list scans the Hugging Face cache used by Splash (`HF_HUB_CACHE`,
+`HF_HOME/hub`, or `~/.cache/huggingface/hub`) and LM Studio's
+`~/.lmstudio/models` folder. An optional additional folder can be entered in
+settings or selected with **Durchsuchen …** in the folder picker; the model
+lists are rescanned immediately after choosing it. It is scanned alongside
+those standard locations. Models found in these folders are listed by
+repository ID. The selector has separate lists
+headed with the installed Splash version: compatible models are above, while
+incompatible and unverified models are below. Legacy `*-Splash` packages are
+marked compatible through Splash 1.3.0 and incompatible with Splash 1.3.1 or
+newer. Other discovered repositories are marked unverified unless they are
+one of the built-in model suggestions. A local folder being found does not by
+itself guarantee that its model format is supported by the installed Splash
+version. A separate editable field accepts a custom repository ID.
+
+**Splash-Version auswählen …** loads the stable releases from the official
+GitHub Releases API. It offers releases that include the macOS ARM64 runtime
+archive and its SHA-256 checksum. SplashBar writes a version-specific formula
+to a local, non-Git Homebrew tap; Homebrew verifies the downloaded archive
+against the release checksum and keeps versions side by side for later
+switching. SplashBar asks before the switch and restarts a loaded server
+afterward; a stopped server remains stopped. Check model compatibility before
+switching; Splash 1.3.1, for example, no longer loads the older `*-Splash`
+packages. After confirming a version change, SplashBar shows a progress window.
+If the operation fails, the window points to a detailed log with command output
+and the application stack trace in `~/Library/Logs/SplashBar/`.
 
 ## Uninstall
 
