@@ -1278,6 +1278,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         if restartLoadedService {
+            // A loaded model takes a few seconds to shut down; booting out
+            // while it is still winding down leaves the service "exiting",
+            // and the bootstrap below then fails with a duplicate service
+            // name. So stop the process for real before unloading. A failed
+            // kill is not fatal: the bootout below falls back to today's
+            // behavior in that case.
+            if servicePID(oldTarget) != nil {
+                _ = runCommand("/bin/launchctl", ["kill", "SIGTERM", oldTarget])
+                _ = waitForServiceToStop(oldTarget)
+            }
             let stopped = runCommand("/bin/launchctl", ["bootout", oldTarget])
             guard stopped.status == 0 else {
                 return tr("validate.stopfailed", stopped.output)
