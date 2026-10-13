@@ -22,20 +22,22 @@
 "model.pick.title" = "モデルフォルダを選択";
 "model.placeholder" = "モデルが見つかりません";
 "model.restart" = "Splashへの変更を適用しますか？";
-"model.restart.detail" = "実行中のサーバーは、新しいモデルと/またはコンテキストサイズを適用するために再起動されます。モデルがまだない場合、Splashはダウンロードし、大量のディスク容量とメモリを使用する可能性があります。";
+"model.restart.detail" = "実行中のサーバーを今すぐ再起動して、新しいモデル、コンテキストサイズ、APIキー、および/または許可ホストを適用するか、変更を保存してサーバーの次回起動時に適用させることもできます。モデルがまだない場合、Splashはダウンロードし、大量のディスク容量とメモリを使用する可能性があります。";
 "model.restart.switch" = "適用して再起動";
 "model.source.additional" = "追加のフォルダ";
 "model.source.selected" = "現在選択中";
 "model.source.suggested" = "Splash提案";
 "model.versionunknown" = "バージョン不明";
+"settings.applylater" = "保存（後で適用）";
 "settings.browse" = "参照…";
 "settings.cancel" = "キャンセル";
 "settings.close" = "閉じる";
 "settings.error.agent" = "ローカルLaunchAgentによるモデルとコンテキストの管理は、サーバーURLがlocalhostまたは127.0.0.1を指す場合のみ利用可能です。";
-"settings.error.brew" = "Homebrewが見つかりません。先にHomebrewでSplashをインストールしてください。";
 "settings.error.releases" = "GitHubから公開Splashバージョンを読み込めませんでした。インターネット接続を確認して再試行してください。";
 "settings.field.addpath" = "追加モデルパス";
 "settings.field.agent" = "LaunchAgentラベル";
+"settings.field.allowedhost" = "許可ホスト（--allowed-host）";
+"settings.field.apikey" = "APIキー（--api-key）";
 "settings.field.compatible" = "✓ Splash %1$@ に互換";
 "settings.field.custom" = "カスタムモデルID（--model）";
 "settings.field.context" = "コンテキストサイズ（--max-context）";
@@ -65,12 +67,11 @@
 "status.stopped" = "Splash停止済み";
 "status.version" = "Splash：%1$@";
 "status.versionchecking" = "Splashバージョン確認中…";
-"validate.agenturl" = "ローカルLaunchAgentによるモデルとコンテキストの管理は、サーバーURLがlocalhostまたは127.0.0.1を指す場合のみ利用可能です。";
 "validate.badplist" = "指定されたLaunchAgent PlistはSplashサーバーを起動しないため変更されませんでした。";
 "validate.labelfirst" = "モデルを切り替える前に、LaunchAgentパスを別途変更してください。";
 "validate.labeltaken" = "新しいLaunchAgentラベルはすでに読み込まれています。別のラベルを選択してください。";
 "validate.modelrequired" = "モデルなしではSplashサーバーは起動できません。先にモデルを選択してください。";
-"validate.noagent" = "Splashが見つかりません。先にHomebrewでインストールしてください。";
+"validate.noagent" = "Splash が見つかりません。Homebrew でインストールするか、バージョンメニューからリリースバージョンを選んでください。";
 "validate.plist" = "LaunchAgent Plistが無効のため変更されませんでした。";
 "validate.savfailed" = "LaunchAgent設定を保存できませんでした：%1$@";
 "validate.startfailed" = "新しいLaunchAgent設定を起動できませんでした：%1$@";
@@ -85,19 +86,42 @@
 %1$@
 
 完全なエラーログ/スタックトレース：%2$@";
+"version.installed" = "（インストール済み）";
 "version.installing" = "Splash %1$@ をインストールしています。
 処理が進行中です。完了までお待ちください。";
-"version.pick.detail" = "インストール済み：%1$@。リストには、対応するmacOS ARM64インストールアーカイブとSHA-256ファイルを持つ公開安定版が含まれます。切り替え中は実行中のSplashサーバーを停止し、その後再開始します。
+"version.pick.detail" = "最初の項目は、システムにインストールされた Splash（例：Homebrew 経由）です。その他の項目は GitHub リリースの安定版で、~/.splashbar/splash-versions にダウンロードされ、SplashBar のみで使用されます。あなたの PATH は変更されません。インストール済み： %1$@。実行中の Splash サーバーは切り替え中に停止され、その後再度始動されます。GitHubリリース一覧を読み込めない場合は、~/.splashbar/splash-versions のローカルインストール済みバージョンが代わりに一覧表示されます。ローカルインストール済みのバージョンには（インストール済み）のマークが付きます。
 
-切り替え前にモデルとの互換性を確認してください。";
+切り替える前にモデルとの互換性を確認してください。";
 "version.pick.title" = "Splashバージョンを選択";
 "version.progressdone" = "処理が完了しました。";
 "version.progresslog" = "エラーログを開く";
 "version.success" = "Splashバージョンを切り替えました。インストール済みバージョン：%1$@";
 "version.switch" = "インストール/切り替え";
 "window.title" = "SplashBar";
+"version.global.title" = "グローバル — %1$@";
+"version.activating" = "Splash %1$@ に切り替え中 …
+操作が進行中です。完了までお待ちください。";
+"version.downloading" = "Splash %1$@ をダウンロード中 …
+%2$@ / %3$@";
+"version.verifying" = "Splash %1$@ のダウンロードを検証中（SHA-256）…";
+"version.extracting" = "Splash %1$@ を展開中 …";
+"version.alreadyactive" = "Splash %1$@ はすでにアクティブです。";
+"version.error.download" = "Splash %1$@ のダウンロードに失敗しました。
+%2$@";
+"version.error.checksum" = "ダウンロードした Splash %1$@ が公開された SHA-256 チェックサムと一致しません。ファイルは使用されませんでした。";
+"version.error.extract" = "Splash %1$@ を展開できませんでした。
+%2$@";
+"version.error.wrapper" = "Splash %1$@ の splash 実行ファイルを作成できませんでした。";
+"version.error.notfound" = "このシステムに Splash のインストールが見つかりません。リリースバージョンを選ぶか、Homebrew でインストールしてください。";
+"version.error.unloadfailed" = "切り替え前に実行中の Splash サービスをアンロードできませんでした：
+%1$@";
+"version.error.unexpectedlayout" = "リリースアーカイブの構成が想定外です。";
 "version.error.releasegone" = "選択したReleaseはGitHubのリリースリストに存在しません。";
 "version.error.stopstuck" = "実行中のSplashサーバーを確実に停止できませんでした。バージョンは切り替わりませんでした。%1$@";
-"version.error.tapfailed" = "Releaseバージョン用ローカルTapを作成できませんでした：
-%1$@";
-"version.error.checksumfailed" = "Splash %1$@ のチェックサムまたはHomebrew公式を作成できませんでした。";
+"version.cancel" = "キャンセル";
+"version.cancelconfirm.title" = "Splash %1$@ のダウンロードをキャンセルしますか？";
+"version.cancelconfirm.detail" = "Splash %1$@ のダウンロードを中止します。これまでに作成されたファイルとフォルダ ~/.splashbar/splash-versions/%1$@ が削除されます。これまで有効だった Splash バージョンは選択されたままです。";
+"version.cancelconfirm.confirm" = "ダウンロードをキャンセル";
+"version.cancelconfirm.keep" = "ダウンロードを続行";
+"version.cancelling" = "ダウンロードを中止してフォルダを削除中 …";
+"version.cancelled" = "Splash %1$@ のダウンロードを中止しました。作成されたファイルとフォルダ ~/.splashbar/splash-versions/%1$@ を削除しました。これまで有効だった Splash バージョンは選択されたままです。";

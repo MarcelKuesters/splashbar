@@ -22,20 +22,22 @@
 "model.pick.title" = "Выбрать папку моделей";
 "model.placeholder" = "Модели не найдены";
 "model.restart" = "Применить изменения в Splash?";
-"model.restart.detail" = "Работающий сервер будет перезапущен, чтобы применить новую модель и/или новый размер контекста. Если модель ещё отсутствует, Splash может скачать её, используя много места на диске и памяти.";
+"model.restart.detail" = "Вы можете перезапустить работающий сервер сейчас, чтобы применить новую модель, размер контекста, API-ключ и/или разрешённый хост, или сохранить изменения и применить их при следующем запуске сервера. Если модель ещё отсутствует, Splash может скачать её, используя много места на диске и памяти.";
 "model.restart.switch" = "Применить и перезапустить";
 "model.source.additional" = "Дополнительная папка";
 "model.source.selected" = "Сейчас выбрана";
 "model.source.suggested" = "Предложение Splash";
 "model.versionunknown" = "не удалось определить";
+"settings.applylater" = "Сохранить, применить позже";
 "settings.browse" = "Обзор …";
 "settings.cancel" = "Отмена";
 "settings.close" = "Закрыть";
 "settings.error.agent" = "Управление моделью и контекстом через локальный LaunchAgent доступно только при URL сервера localhost или 127.0.0.1.";
-"settings.error.brew" = "Homebrew не найден. Сначала установите Splash через Homebrew.";
 "settings.error.releases" = "Не удалось загрузить опубликованные версии Splash с GitHub. Проверьте подключение к интернету и повторите.";
 "settings.field.addpath" = "Дополнительный путь к моделям";
 "settings.field.agent" = "Метка LaunchAgent";
+"settings.field.allowedhost" = "Разрешённый хост (--allowed-host)";
+"settings.field.apikey" = "API-ключ (--api-key)";
 "settings.field.compatible" = "✓ Подходит для Splash %1$@";
 "settings.field.custom" = "Своя ID модели (--model)";
 "settings.field.context" = "Размер контекста (--max-context)";
@@ -65,12 +67,11 @@
 "status.stopped" = "Splash остановлен";
 "status.version" = "Splash: %1$@";
 "status.versionchecking" = "Проверка версии Splash …";
-"validate.agenturl" = "Управление моделью и контекстом через локальный LaunchAgent доступно только при URL сервера localhost или 127.0.0.1.";
 "validate.badplist" = "Указанный plist LaunchAgent не запускает сервер Splash и не был изменён.";
 "validate.labelfirst" = "Сначала отдельно измените путь LaunchAgent, прежде чем менять модель.";
 "validate.labeltaken" = "Новая метка LaunchAgent уже загружена. Выберите другую метку.";
 "validate.modelrequired" = "Сервер Splash не запустится без модели. Сначала выберите модель.";
-"validate.noagent" = "Splash не найден. Сначала установите Splash через Homebrew.";
+"validate.noagent" = "Splash не найден на этой системе. Установите его через Homebrew или выберите опубликованную версию в меню версий.";
 "validate.plist" = "Plist LaunchAgent некорректна и не была изменена.";
 "validate.savfailed" = "Не удалось сохранить конфигурацию LaunchAgent: %1$@";
 "validate.startfailed" = "Не удалось запустить новую конфигурацию LaunchAgent: %1$@";
@@ -85,19 +86,42 @@
 %1$@
 
 Полный журнал ошибок / трассировка: %2$@";
+"version.installed" = " (установлена)";
 "version.installing" = "Splash %1$@ устанавливается.
 Операция выполняется; подождите, пока она завершится.";
-"version.pick.detail" = "Установлена: %1$@. В списке — опубликованные стабильные версии с подходящим архивом для macOS ARM64 и файлом SHA-256. Работающий сервер Splash остановится на время переключения и затем запустится снова.
+"version.pick.detail" = "Первый пункт — Splash, установленная на вашей системе (например, через Homebrew). Остальные пункты — стабильные версии из релизов GitHub; они скачиваются в ~/.splashbar/splash-versions и используются только SplashBar, ваш PATH не изменяется. Установлена: %1$@. Работающий сервер Splash останавливается во время переключения и запускается снова. Если список релизов GitHub недоступен, вместо него перечисляются локально установленные версии из ~/.splashbar/splash-versions; локально установленные версии отмечены пометкой (установлена).
 
-Перед переключением проверьте совместимость с вашей моделью.";
+Проверьте совместимость с вашей моделью перед переключением.";
 "version.pick.title" = "Выбрать версию Splash";
 "version.progressdone" = "Операция завершена.";
 "version.progresslog" = "Открыть журнал ошибок";
 "version.success" = "Версия Splash переключена. Установленная версия: %1$@";
 "version.switch" = "Установить / переключить";
 "window.title" = "SplashBar";
+"version.global.title" = "Глобальная — %1$@";
+"version.activating" = "Переключение на Splash %1$@ …
+Операция выполняется; подождите её завершения.";
+"version.downloading" = "Загрузка Splash %1$@ …
+%2$@ из %3$@";
+"version.verifying" = "Проверка загрузки Splash %1$@ (SHA-256) …";
+"version.extracting" = "Извлечение Splash %1$@ …";
+"version.alreadyactive" = "Splash %1$@ уже активна.";
+"version.error.download" = "Загрузка Splash %1$@ не удалась.
+%2$@";
+"version.error.checksum" = "Загруженная Splash %1$@ не соответствует опубликованной контрольной сумме SHA-256. Файл не использован.";
+"version.error.extract" = "Не удалось извлечь Splash %1$@.
+%2$@";
+"version.error.wrapper" = "Не удалось создать исполняемый файл splash для Splash %1$@.";
+"version.error.notfound" = "Установка Splash на этой системе не найдена. Выберите одну из опубликованных версий или установите Splash через Homebrew.";
+"version.error.unloadfailed" = "Запущенный сервис Splash не удалось разгрузить перед переключением:
+%1$@";
+"version.error.unexpectedlayout" = "Архив релиза имеет неожиданный состав.";
 "version.error.releasegone" = "Выбранный релиз больше не доступен в списке релизов GitHub.";
 "version.error.stopstuck" = "Не удалось надёжно остановить работающий сервер Splash. Версия не была переключена. %1$@";
-"version.error.tapfailed" = "Не удалось создать локальный tap для release-версий:
-%1$@";
-"version.error.checksumfailed" = "Не удалось создать контрольную сумму или формулу Homebrew для Splash %1$@.";
+"version.cancel" = "Отмена";
+"version.cancelconfirm.title" = "Отменить загрузку Splash %1$@?";
+"version.cancelconfirm.detail" = "Загрузка Splash %1$@ будет прервана. Созданные файлы и каталог ~/.splashbar/splash-versions/%1$@ будут удалены. Ранее активная версия Splash остаётся выбранной.";
+"version.cancelconfirm.confirm" = "Отменить загрузку";
+"version.cancelconfirm.keep" = "Продолжить загрузку";
+"version.cancelling" = "Прерывание загрузки и удаление каталога …";
+"version.cancelled" = "Загрузка Splash %1$@ прервана. Созданные файлы и каталог ~/.splashbar/splash-versions/%1$@ удалены. Ранее активная версия Splash остаётся выбранной.";
