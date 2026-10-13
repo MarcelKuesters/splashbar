@@ -8,6 +8,7 @@ struct SplashBarSettings {
     static let defaultRequestTimeout: TimeInterval = 2
     static let defaultIdleThresholdGB = 3.0
     static let defaultModelID = ""
+    static let defaultMaxContext = ContextSize.auto
 
     private enum Key {
         static let launchdLabel = "launchdLabel"
@@ -19,6 +20,7 @@ struct SplashBarSettings {
         static let idleThresholdGB = "idleThresholdGB"
         static let modelID = "modelID"
         static let additionalModelsPath = "additionalModelsPath"
+        static let maxContext = "maxContext"
     }
 
     var launchdLabel: String
@@ -30,6 +32,7 @@ struct SplashBarSettings {
     var idleThresholdGB: Double
     var modelID: String
     var additionalModelsPath: String
+    var maxContext: ContextSize
 
     init(defaults: UserDefaults = .standard) {
         launchdLabel = defaults.string(forKey: Key.launchdLabel) ?? Self.defaultLaunchdLabel
@@ -42,6 +45,7 @@ struct SplashBarSettings {
         idleThresholdGB = defaults.object(forKey: Key.idleThresholdGB) as? Double ?? Self.defaultIdleThresholdGB
         modelID = defaults.string(forKey: Key.modelID) ?? Self.defaultModelID
         additionalModelsPath = defaults.string(forKey: Key.additionalModelsPath) ?? ""
+        maxContext = ContextSize(rawValue: defaults.string(forKey: Key.maxContext) ?? "") ?? Self.defaultMaxContext
     }
 
     func save(to defaults: UserDefaults = .standard) {
@@ -54,6 +58,7 @@ struct SplashBarSettings {
         defaults.set(idleThresholdGB, forKey: Key.idleThresholdGB)
         defaults.set(modelID, forKey: Key.modelID)
         defaults.set(additionalModelsPath, forKey: Key.additionalModelsPath)
+        defaults.set(maxContext.rawValue, forKey: Key.maxContext)
     }
 }
 
@@ -457,6 +462,20 @@ func modelID(in arguments: [String]) -> String? {
     return arguments.first(where: { $0.hasPrefix("--model=") })?.components(separatedBy: "=").dropFirst().joined(separator: "=")
 }
 
+/// Reads `--max-context` from a LaunchAgent argument list (accepts both
+/// `--max-context 16K` and `--max-context=16K`). Returns nil when the flag
+/// is absent; that is equivalent to `.auto`.
+func contextSize(in arguments: [String]) -> ContextSize? {
+    var text: String?
+    if let index = arguments.firstIndex(of: "--max-context"), arguments.indices.contains(index + 1) {
+        text = arguments[index + 1]
+    } else if let joined = arguments.first(where: { $0.hasPrefix("--max-context=") }) {
+        text = joined.components(separatedBy: "=").dropFirst().joined(separator: "=")
+    }
+    guard let text = text, !text.isEmpty else { return nil }
+    return ContextSize(rawValue: text.trimmingCharacters(in: .whitespaces).uppercased())
+}
+
 @discardableResult
 func sh(_ cmd: String) -> String {
     let p = Process()
@@ -492,6 +511,26 @@ func expandedPath(_ path: String) -> String {
 }
 
 enum ServerState { case running, idle, loading, stopped }
+
+/// Context window limits for `splash serve --max-context`. Splash parses the
+/// value case-insensitively (K = 1024 tokens, up to 256K); "auto" is the
+/// model's native window when memory holds it.
+enum ContextSize: String, CaseIterable {
+    case auto = "AUTO"
+    case c_16k = "16K"
+    case c_32k = "32K"
+    case c_64k = "64K"
+    case c_128k = "128K"
+    case c_192k = "192K"
+    case c_256k = "256K"
+
+    /// Title for the settings UI. The numeric sizes are the same in every
+    /// language; only "auto" is localized.
+    var displayName: String {
+        if self == .auto { return tr("context.auto") }
+        return rawValue
+    }
+}
 
 // Splash Engine memory appears in phys_footprint, not RSS.
 func footprintGB(_ pid: String) -> Double {
@@ -536,10 +575,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var target: String { "gui/\(uid)/\(settings.launchdLabel)" }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if let arguments = readAgentPlist(at: settings.agentPlistPath)?["ProgramArguments"] as? [String],
-           let configuredModel = modelID(in: arguments), configuredModel != settings.modelID {
-            settings.modelID = configuredModel
-            settings.save()
+        if let arguments = readAgentPlist(at: settings.agentPlistPath)?["ProgramArguments"] as? [String] {
+            if let configuredModel = modelID(in: arguments), configuredModel != settings.modelID {
+                settings.modelID = configuredModel
+                settings.save()
+            }
+            if let configuredContext = contextSize(in: arguments), configuredContext != settings.maxContext {
+                settings.maxContext = configuredContext
+                settings.save()
+            }
         }
 
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -725,6 +769,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let otherModelField = NSComboBox()
         let customModelField = NSTextField(string: "")
         let additionalPathField = NSTextField(string: settings.additionalModelsPath)
+        let urlField = NSTextField(string: settings.serverURL.absoluteString)
+        let agentLabelField = NSTextField(string: settings.launchdLabel)
+        let plistField = NSTextField(string: settings.agentPlistPath)
+        let logField = NSTextField(string: settings.logPath)
+        let refreshField = NSTextField(string: String(settings.refreshInterval))
+        let timeoutField = NSTextField(string: String(settings.requestTimeout))
+        let idleField = NSTextField(string: String(settings.idleThresholdGB))
+        let contextField = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 0, height: 0), pullsDown: false)
+        contextField.addItems(withTitles: ContextSize.allCases.map { $0.displayName })
+        contextField.selectItem(withTitle: settings.maxContext.displayName)
         compatibleModelField.isEditable = false
         otherModelField.isEditable = false
         compatibleModelsField = compatibleModelField
@@ -744,17 +798,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         otherModelField.action = #selector(ModelSelectionCoordinator.modelListChanged(_:))
         customModelField.delegate = modelSelectionCoordinator
 
-        let fields: [(String, NSTextField)] = [
-            (tr("settings.field.url"), NSTextField(string: settings.serverURL.absoluteString)),
+        let fields: [(String, NSView)] = [
+            (tr("settings.field.url"), urlField),
             (tr("settings.field.compatible", currentSplashVersion), compatibleModelField),
             (tr("settings.field.other"), otherModelField),
             (tr("settings.field.custom"), customModelField),
-            (tr("settings.field.agent"), NSTextField(string: settings.launchdLabel)),
-            (tr("settings.field.plist"), NSTextField(string: settings.agentPlistPath)),
-            (tr("settings.field.log"), NSTextField(string: settings.logPath)),
-            (tr("settings.field.refresh"), NSTextField(string: String(settings.refreshInterval))),
-            (tr("settings.field.timeout"), NSTextField(string: String(settings.requestTimeout))),
-            (tr("settings.field.idle"), NSTextField(string: String(settings.idleThresholdGB))),
+            (tr("settings.field.context"), contextField),
+            (tr("settings.field.agent"), agentLabelField),
+            (tr("settings.field.plist"), plistField),
+            (tr("settings.field.log"), logField),
+            (tr("settings.field.refresh"), refreshField),
+            (tr("settings.field.timeout"), timeoutField),
+            (tr("settings.field.idle"), idleField),
             (tr("settings.field.addpath"), additionalPathField)
         ]
 
@@ -764,7 +819,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let y = CGFloat(fields.count - index - 1) * 38 + 6
             let label = NSTextField(labelWithString: title)
             label.frame = NSRect(x: 0, y: y, width: 230, height: 24)
-            field.frame = NSRect(x: 237, y: y, width: index == 10 ? 385 : 475, height: 24)
+            field.frame = NSRect(x: 237, y: y, width: index == fields.count - 1 ? 385 : 475, height: 24)
             form.addSubview(label)
             form.addSubview(field)
         }
@@ -778,22 +833,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         guard runClosableAlert(alert) == .alertFirstButtonReturn else { return }
 
-        let serverText = fields[0].1.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let serverText = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let requestedModel = [compatibleModelField, otherModelField]
             .map { $0.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first(where: { !$0.isEmpty })
             ?? customModelField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        let additionalModelsPath = fields[10].1.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestedContext = ContextSize.allCases
+            .first { $0.displayName == (contextField.titleOfSelectedItem ?? "") } ?? .auto
+        let additionalModelsPath = additionalPathField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let serverURL = validatedServerURL(serverText),
               requestedModel.isEmpty || validatedModelID(requestedModel),
-              fields[4].1.stringValue.range(of: #"^[A-Za-z0-9][A-Za-z0-9._-]*$"#, options: .regularExpression) != nil,
-              !fields[5].1.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !fields[6].1.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let refreshInterval = Double(fields[7].1.stringValue), refreshInterval.isFinite,
+              agentLabelField.stringValue.range(of: #"^[A-Za-z0-9][A-Za-z0-9._-]*$"#, options: .regularExpression) != nil,
+              !plistField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !logField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let refreshInterval = Double(refreshField.stringValue), refreshInterval.isFinite,
               refreshInterval >= 1, refreshInterval <= 3600,
-              let requestTimeout = Double(fields[8].1.stringValue), requestTimeout.isFinite,
+              let requestTimeout = Double(timeoutField.stringValue), requestTimeout.isFinite,
               requestTimeout > 0, requestTimeout <= 60,
-              let idleThresholdGB = Double(fields[9].1.stringValue), idleThresholdGB.isFinite,
+              let idleThresholdGB = Double(idleField.stringValue), idleThresholdGB.isFinite,
               idleThresholdGB > 0, idleThresholdGB <= 1024 else {
             showSettingsError()
             return
@@ -801,46 +858,52 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         var updated = settings
         let oldDefaultPlist = NSHomeDirectory() + "/Library/LaunchAgents/\(settings.launchdLabel).plist"
-        updated.launchdLabel = fields[4].1.stringValue
-        updated.agentPlistPath = fields[5].1.stringValue
+        updated.launchdLabel = agentLabelField.stringValue
+        updated.agentPlistPath = plistField.stringValue
         if updated.agentPlistPath == oldDefaultPlist {
             updated.agentPlistPath = NSHomeDirectory() + "/Library/LaunchAgents/\(updated.launchdLabel).plist"
         }
         updated.serverURL = serverURL
-        updated.logPath = fields[6].1.stringValue
+        updated.logPath = logField.stringValue
         updated.refreshInterval = refreshInterval
         updated.requestTimeout = requestTimeout
         updated.idleThresholdGB = idleThresholdGB
         updated.additionalModelsPath = additionalModelsPath
-        if !requestedModel.isEmpty {
-            let currentAgentModel = (readAgentPlist(at: updated.agentPlistPath)?["ProgramArguments"] as? [String])
-                .flatMap { modelID(in: $0) }
-            let modelChanged = requestedModel != currentAgentModel
-            if modelChanged {
-                guard isLocalServerURL(serverURL) else {
-                    showSettingsError(tr("settings.error.agent"))
-                    return
-                }
-                let oldTarget = "gui/\(uid)/\(settings.launchdLabel)"
-                let serviceLoaded = !sh("launchctl print \(shellQuote(oldTarget)) >/dev/null 2>&1 && echo yes").isEmpty
-                if serviceLoaded {
-                    let restartAlert = NSAlert()
-                    restartAlert.messageText = tr("model.restart")
-                    restartAlert.informativeText = tr("model.restart.detail")
-                    restartAlert.addButton(withTitle: tr("model.restart.switch"))
-                    restartAlert.addButton(withTitle: "Abbrechen")
-                    guard runClosableAlert(restartAlert) == .alertFirstButtonReturn else { return }
-                }
+        updated.maxContext = requestedContext
 
-                if let error = applyModelSelection(
-                    requestedModel,
-                    settings: updated,
-                    previousSettings: settings,
-                    restartLoadedService: serviceLoaded
-                ) {
-                    showSettingsError(error)
-                    return
-                }
+        let agentArguments = readAgentPlist(at: updated.agentPlistPath)?["ProgramArguments"] as? [String] ?? []
+        let currentAgentModel = modelID(in: agentArguments)
+        let modelChanged = !requestedModel.isEmpty && requestedModel != currentAgentModel
+        let currentAgentContext = contextSize(in: agentArguments) ?? .auto
+        let contextChanged = requestedContext != currentAgentContext
+
+        if modelChanged || contextChanged {
+            guard isLocalServerURL(serverURL) else {
+                showSettingsError(tr("settings.error.agent"))
+                return
+            }
+            let oldTarget = "gui/\(uid)/\(settings.launchdLabel)"
+            let serviceLoaded = !sh("launchctl print \(shellQuote(oldTarget)) >/dev/null 2>&1 && echo yes").isEmpty
+            if serviceLoaded {
+                let restartAlert = NSAlert()
+                restartAlert.messageText = tr("model.restart")
+                restartAlert.informativeText = tr("model.restart.detail")
+                restartAlert.addButton(withTitle: tr("model.restart.switch"))
+                restartAlert.addButton(withTitle: tr("settings.cancel"))
+                guard runClosableAlert(restartAlert) == .alertFirstButtonReturn else { return }
+            }
+
+            if let error = applyServeArguments(
+                requestedModel,
+                context: requestedContext,
+                settings: updated,
+                previousSettings: settings,
+                restartLoadedService: serviceLoaded
+            ) {
+                showSettingsError(error)
+                return
+            }
+            if modelChanged {
                 updated.modelID = requestedModel
             }
         }
@@ -864,8 +927,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return ["localhost", "127.0.0.1", "::1"].contains(host)
     }
 
-    func applyModelSelection(
+    func applyServeArguments(
         _ selectedModel: String,
+        context: ContextSize,
         settings updatedSettings: SplashBarSettings,
         previousSettings: SplashBarSettings,
         restartLoadedService: Bool
@@ -893,6 +957,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let splashPath = splashExecutablePath() else {
                 return tr("validate.noagent")
             }
+            // splash serve requires --model; a newly created agent without
+            // one could never start, so no context flag alone is not enough.
+            guard !selectedModel.isEmpty else {
+                return tr("validate.modelrequired")
+            }
             let port = updatedSettings.serverURL.port ?? 8080
             arguments = [splashPath, "serve", "--port", String(port)]
         } else if !arguments.contains("serve") && !arguments.contains(where: { URL(fileURLWithPath: $0).lastPathComponent == "splash" }) {
@@ -908,12 +977,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             arguments += ["--port", port]
         }
 
-        if let index = arguments.firstIndex(of: "--model"), arguments.indices.contains(index + 1) {
-            arguments[index + 1] = selectedModel
-        } else if let index = arguments.firstIndex(where: { $0.hasPrefix("--model=") }) {
-            arguments[index] = "--model=\(selectedModel)"
+        // A cleared model field leaves any existing --model argument untouched.
+        if !selectedModel.isEmpty {
+            if let index = arguments.firstIndex(of: "--model"), arguments.indices.contains(index + 1) {
+                arguments[index + 1] = selectedModel
+            } else if let index = arguments.firstIndex(where: { $0.hasPrefix("--model=") }) {
+                arguments[index] = "--model=\(selectedModel)"
+            } else {
+                arguments += ["--model", selectedModel]
+            }
+        }
+
+        // "auto" means "let Splash decide", so the flag is left out entirely.
+        if context == .auto {
+            if let index = arguments.firstIndex(of: "--max-context"), arguments.indices.contains(index + 1) {
+                arguments.removeSubrange(index...index + 1)
+            } else if let index = arguments.firstIndex(where: { $0.hasPrefix("--max-context=") }) {
+                arguments.remove(at: index)
+            }
         } else {
-            arguments += ["--model", selectedModel]
+            if let index = arguments.firstIndex(of: "--max-context"), arguments.indices.contains(index + 1) {
+                arguments[index + 1] = context.rawValue
+            } else if let index = arguments.firstIndex(where: { $0.hasPrefix("--max-context=") }) {
+                arguments[index] = "--max-context=\(context.rawValue)"
+            } else {
+                arguments += ["--max-context", context.rawValue]
+            }
         }
 
         plist["Label"] = updatedSettings.launchdLabel

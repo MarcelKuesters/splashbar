@@ -29,6 +29,7 @@ seven languages (de, en, fr, es, ja, zh, ru).
 - Start / Stop (frees RAM + VRAM) / Restart without opening Terminal
 - Opens the chat UI at `http://127.0.0.1:8080` and the server log
 - Selects the model ID passed to `splash serve --model`
+- Chooses the context size passed to `splash serve --max-context` (auto = the model's native window)
 - Shows the installed Splash version and can install or switch between published stable GitHub releases
 - Shows the model that is currently loaded (live, from the server's `/v1/models`)
 
@@ -68,15 +69,21 @@ without rebuilding the app.
 | API request timeout | 2 seconds |
 | Idle memory threshold | 3 GB |
 | Splash model ID | Read from the LaunchAgent; empty until configured |
+| Context size (--max-context) | Auto — the argument is left out |
 | Additional model search folder | None |
 
 The server URL is shared by the chat shortcut and the `/v1/models` health
 check. Paths may start with `~` to refer to your home directory. Choose a
 suggested model or enter a custom repository ID such as
 `mlx-community/Qwen3.8-27B-4bit` in the editable model field.
-Saving a new model updates the configured Splash LaunchAgent. If the server is
-already loaded, SplashBar asks before restarting it; if it is stopped, the
-LaunchAgent is prepared and the next **Starten** action starts it.
+Saving a new model or a different context size updates the configured Splash
+LaunchAgent. If the server is already loaded, SplashBar asks before restarting
+it; if it is stopped, the LaunchAgent is prepared and the next **Starten**
+action starts it.
+
+The context size caps the window available per conversation; `Auto` lets
+Splash keep the model's native window when memory allows and is not written
+to the LaunchAgent at all.
 
 The model list scans the Hugging Face cache used by Splash (`HF_HUB_CACHE`,
 `HF_HOME/hub`, or `~/.cache/huggingface/hub`) and LM Studio's
