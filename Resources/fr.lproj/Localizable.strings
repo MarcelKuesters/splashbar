@@ -32,7 +32,6 @@
 "settings.cancel" = "Annuler";
 "settings.close" = "Fermer";
 "settings.error.agent" = "La gestion du modèle et du contexte via un LaunchAgent local n'est disponible que si l'URL du serveur pointe vers localhost ou 127.0.0.1.";
-"settings.error.brew" = "Homebrew n'a pas été trouvé. Installez d'abord Splash avec Homebrew.";
 "settings.error.releases" = "Les versions publiées de Splash n'ont pas pu être chargées depuis GitHub. Vérifiez votre connexion Internet et réessayez.";
 "settings.field.addpath" = "Chemin de modèles supplémentaire";
 "settings.field.agent" = "Étiquette du LaunchAgent";
@@ -65,12 +64,11 @@
 "status.stopped" = "Splash est arrêté";
 "status.version" = "Splash : %1$@";
 "status.versionchecking" = "Vérification de la version de Splash …";
-"validate.agenturl" = "La gestion du modèle et du contexte via un LaunchAgent local n'est disponible que si l'URL du serveur pointe vers localhost ou 127.0.0.1.";
 "validate.badplist" = "La plist du LaunchAgent indiquée ne démarre pas un serveur Splash et n'a pas été modifiée.";
 "validate.labelfirst" = "Modifiez d'abord le chemin du LaunchAgent séparément avant de changer le modèle.";
 "validate.labeltaken" = "La nouvelle étiquette du LaunchAgent est déjà chargée. Veuillez choisir une autre étiquette.";
 "validate.modelrequired" = "Le serveur Splash ne peut pas démarrer sans modèle. Veuillez d'abord sélectionner un modèle.";
-"validate.noagent" = "Splash n'a pas été trouvé. Installez-le d'abord avec Homebrew.";
+"validate.noagent" = "Splash est introuvable sur ce système. Installez-le avec Homebrew ou choisissez une version publiée dans le menu des versions.";
 "validate.plist" = "La plist du LaunchAgent est invalide et n'a pas été modifiée.";
 "validate.savfailed" = "La configuration du LaunchAgent n'a pas pu être enregistrée : %1$@";
 "validate.startfailed" = "La nouvelle configuration du LaunchAgent n'a pas pu être démarrée : %1$@";
@@ -87,7 +85,7 @@
 Journal d'erreurs / trace complète : %2$@";
 "version.installing" = "Installation de Splash %1$@.
 L'opération est en cours ; veuillez attendre qu'elle soit terminée.";
-"version.pick.detail" = "Installée : %1$@. La liste contient des versions stables publiées avec une archive d'installation macOS ARM64 correspondante et un fichier SHA-256. Un serveur Splash en cours est arrêté pendant le changement puis relancé.
+"version.pick.detail" = "La première entrée est la Splash installée sur votre système (par exemple via Homebrew). Les autres entrées sont des versions stables des releases GitHub ; elles sont téléchargées dans ~/.splashbar/splash-versions et utilisées uniquement par SplashBar, sans modifier votre PATH. Installée : %1$@. Un serveur Splash en cours est arrêté pendant le changement puis relancé.
 
 Vérifiez la compatibilité avec votre modèle avant de changer.";
 "version.pick.title" = "Choisir la version de Splash";
@@ -96,8 +94,23 @@ Vérifiez la compatibilité avec votre modèle avant de changer.";
 "version.success" = "La version de Splash a été changée. Version installée : %1$@";
 "version.switch" = "Installer / changer";
 "window.title" = "SplashBar";
+"version.global.title" = "Global — %1$@";
+"version.activating" = "Bascule vers Splash %1$@ …
+L'opération est en cours ; veuillez attendre qu'elle soit terminée.";
+"version.downloading" = "Téléchargement de Splash %1$@ …
+%2$@ sur %3$@";
+"version.verifying" = "Vérification du téléchargement de Splash %1$@ (SHA-256) …";
+"version.extracting" = "Extraction de Splash %1$@ …";
+"version.alreadyactive" = "Splash %1$@ est déjà active.";
+"version.error.download" = "Le téléchargement de Splash %1$@ a échoué.
+%2$@";
+"version.error.checksum" = "Le Splash %1$@ téléchargé ne correspond pas à la somme de contrôle SHA-256 publiée. Le fichier n'a pas été utilisé.";
+"version.error.extract" = "Splash %1$@ n'a pas pu être extrait.
+%2$@";
+"version.error.wrapper" = "L'exécutable splash de Splash %1$@ n'a pas pu être créé.";
+"version.error.notfound" = "Aucune installation de Splash n'a été trouvée sur ce système. Choisissez une version publiée ou installez Splash avec Homebrew.";
+"version.error.unloadfailed" = "Le service Splash en cours n'a pas pu être déchargé avant le changement :
+%1$@";
+"version.error.unexpectedlayout" = "L'archive de la release a une structure inattendue.";
 "version.error.releasegone" = "La version sélectionnée n'est plus disponible dans la liste des versions GitHub.";
 "version.error.stopstuck" = "Impossible d'arrêter de manière fiable le serveur Splash en cours. La version n'a pas été changée. %1$@";
-"version.error.tapfailed" = "Impossible de créer le tap local pour les versions de release :
-%1$@";
-"version.error.checksumfailed" = "Impossible de créer la somme de contrôle ou la formule Homebrew pour Splash %1$@.";

@@ -1,6 +1,10 @@
 import Cocoa
 
 struct SplashBarSettings {
+    /// Sentinel for the Splash installation found on the user's PATH (for
+    /// example a Homebrew install). Any other value is a version that SplashBar
+    /// downloads itself into `~/.splashbar/splash-versions/<version>`.
+    static let globalVersion = "global"
     static let defaultLaunchdLabel = "local.llm.splash"
     static let defaultServerURL = URL(string: "http://127.0.0.1:8080")!
     static let defaultLogPath = NSHomeDirectory() + "/Library/Logs/Splash/splash.log"
@@ -21,6 +25,7 @@ struct SplashBarSettings {
         static let modelID = "modelID"
         static let additionalModelsPath = "additionalModelsPath"
         static let maxContext = "maxContext"
+        static let selectedVersion = "selectedVersion"
     }
 
     var launchdLabel: String
@@ -33,6 +38,7 @@ struct SplashBarSettings {
     var modelID: String
     var additionalModelsPath: String
     var maxContext: ContextSize
+    var selectedVersion: String
 
     init(defaults: UserDefaults = .standard) {
         launchdLabel = defaults.string(forKey: Key.launchdLabel) ?? Self.defaultLaunchdLabel
@@ -46,6 +52,7 @@ struct SplashBarSettings {
         modelID = defaults.string(forKey: Key.modelID) ?? Self.defaultModelID
         additionalModelsPath = defaults.string(forKey: Key.additionalModelsPath) ?? ""
         maxContext = ContextSize(rawValue: defaults.string(forKey: Key.maxContext) ?? "") ?? Self.defaultMaxContext
+        selectedVersion = defaults.string(forKey: Key.selectedVersion) ?? Self.globalVersion
     }
 
     func save(to defaults: UserDefaults = .standard) {
@@ -59,6 +66,7 @@ struct SplashBarSettings {
         defaults.set(modelID, forKey: Key.modelID)
         defaults.set(additionalModelsPath, forKey: Key.additionalModelsPath)
         defaults.set(maxContext.rawValue, forKey: Key.maxContext)
+        defaults.set(selectedVersion, forKey: Key.selectedVersion)
     }
 }
 
@@ -123,6 +131,8 @@ struct SplashRelease {
     var version: String
     var archiveURL: String
     var checksumURL: String
+    /// Archive size in bytes, from the GitHub API. Zero when unknown.
+    var size: Int = 0
 }
 
 struct LocalModel {
@@ -381,8 +391,85 @@ func executablePath(_ name: String, candidates: [String]) -> String? {
     return found.isEmpty ? nil : found
 }
 
-func splashExecutablePath() -> String? {
+/// The Splash executable visible on the user's PATH (for example the
+/// Homebrew install). SplashBar only reads this location, never writes to it.
+func globalSplashExecutablePath() -> String? {
     executablePath("splash", candidates: ["/opt/homebrew/bin/splash", "/usr/local/bin/splash"])
+}
+
+/// Root of the versions SplashBar manages itself, nvm-style.
+func splashVersionsDirectory() -> URL {
+    URL(fileURLWithPath: NSHomeDirectory())
+        .appendingPathComponent(".splashbar", isDirectory: true)
+        .appendingPathComponent("splash-versions", isDirectory: true)
+}
+
+/// The `splash` executable of a version SplashBar downloaded itself.
+func localSplashExecutablePath(forVersion version: String) -> String? {
+    guard version.range(of: #"^\d+(?:\.\d+){1,3}$"#, options: .regularExpression) != nil else { return nil }
+    let path = splashVersionsDirectory()
+        .appendingPathComponent(version, isDirectory: true)
+        .appendingPathComponent("splash")
+        .path
+    return FileManager.default.isExecutableFile(atPath: path) ? path : nil
+}
+
+/// The executable SplashBar launches for the current selection: the user's
+/// global install for `global`, otherwise the locally managed version.
+func selectedSplashExecutablePath(selectedVersion: String) -> String? {
+    if selectedVersion == SplashBarSettings.globalVersion {
+        return globalSplashExecutablePath()
+    }
+    return localSplashExecutablePath(forVersion: selectedVersion)
+}
+
+/// Marker files every extracted release must contain.
+private let splashVersionMarkers = ["install/launcher.py", "python/bin/python3", "release.json"]
+
+/// Whether a version directory holds the files a usable Splash needs.
+func versionMarkersPresent(in directory: URL) -> Bool {
+    for marker in splashVersionMarkers {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(
+            atPath: directory.appendingPathComponent(marker).path,
+            isDirectory: &isDirectory
+        ), !isDirectory.boolValue else { return false }
+    }
+    return true
+}
+
+/// Whether the markers are present in `~/.splashbar/splash-versions/<version>`.
+func localVersionIsComplete(_ version: String) -> Bool {
+    let directory = splashVersionsDirectory().appendingPathComponent(version, isDirectory: true)
+    return versionMarkersPresent(in: directory)
+}
+
+/// The release archives ship no `splash` executable; Homebrew generates one
+/// as a wrapper around the bundled Python interpreter. We do the same so the
+/// extracted directory is self-contained and works from any working directory.
+func writeSplashVersionWrapper(in versionDirectory: URL) -> Bool {
+    let wrapper = versionDirectory.appendingPathComponent("splash")
+    let script = """
+    #!/bin/sh
+    DIR="$(cd "$(dirname "$0")" && pwd)"
+    export PYTHONDONTWRITEBYTECODE=1
+    exec "$DIR/python/bin/python3" -u "$DIR/install/launcher.py" "$@"
+    """
+    do {
+        try Data(script.utf8).write(to: wrapper, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: wrapper.path)
+        return true
+    } catch {
+        return false
+    }
+}
+
+func formatBytes(_ bytes: Int) -> String {
+    let gb = Double(bytes) / 1_073_741_824
+    if gb >= 1 { return String(format: "%.1f GB", gb) }
+    let mb = Double(bytes) / 1_048_576
+    if mb >= 1 { return String(format: "%.0f MB", mb) }
+    return String(format: "%.0f KB", Double(bytes) / 1024)
 }
 
 // Localizes a key from the app's .lproj resources. The development language is
@@ -393,10 +480,6 @@ func tr(_ key: String, _ args: CVarArg...) -> String {
     let format = Bundle.main.localizedString(forKey: key, value: key, table: nil)
     guard !args.isEmpty else { return format }
     return String(format: format, locale: Locale.current, arguments: args)
-}
-
-func brewExecutablePath() -> String? {
-    executablePath("brew", candidates: ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"])
 }
 
 func availableSplashReleases() -> [SplashRelease] {
@@ -419,11 +502,17 @@ func availableSplashReleases() -> [SplashRelease] {
                   version.range(of: #"^\d+(?:\.\d+){1,3}$"#, options: .regularExpression) != nil,
                   let assets = entry["assets"] as? [[String: Any]] else { continue }
             let archiveName = "splash-\(version)-arm64-macos26.tar.gz"
-            guard let archive = assets.first(where: { $0["name"] as? String == archiveName })?["browser_download_url"] as? String,
+            guard let archiveAsset = assets.first(where: { $0["name"] as? String == archiveName }),
+                  let archive = archiveAsset["browser_download_url"] as? String,
                   let checksum = assets.first(where: { $0["name"] as? String == archiveName + ".sha256" })?["browser_download_url"] as? String,
                   archive.hasPrefix("https://github.com/incoai/splash/releases/download/"),
                   checksum.hasPrefix("https://github.com/incoai/splash/releases/download/") else { continue }
-            releases.append(SplashRelease(version: version, archiveURL: archive, checksumURL: checksum))
+            releases.append(SplashRelease(
+                version: version,
+                archiveURL: archive,
+                checksumURL: checksum,
+                size: archiveAsset["size"] as? Int ?? 0
+            ))
         }
         if entries.count < 100 { break }
     }
@@ -440,8 +529,8 @@ func availableSplashReleases() -> [SplashRelease] {
     }
 }
 
-func splashVersion() -> String {
-    guard let executable = splashExecutablePath() else { return tr("model.notinstalled") }
+func splashVersionString(of executable: String?) -> String {
+    guard let executable else { return tr("model.notinstalled") }
     let result = runCommand(executable, ["--version"])
     return result.status == 0 ? result.output : tr("model.versionunknown")
 }
@@ -562,6 +651,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var versionProgressWindow: NSWindow?
     var versionProgressText: NSTextField?
     var versionProgressSpinner: NSProgressIndicator?
+    var versionProgressBar: NSProgressIndicator?
+    private let versionDownloadLock = NSLock()
+    private var versionDownloadActive = false
     var versionLogButton: NSButton?
     var versionCloseButton: NSButton?
     var versionProgressLogURL: URL?
@@ -706,12 +798,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         startItem.isEnabled = state == .stopped && !isUpdatingSplash
         stopItem.isEnabled = state != .stopped && !isUpdatingSplash
         restartItem.isEnabled = state != .stopped && !isUpdatingSplash
-        versionItem.isEnabled = !isUpdatingSplash && brewExecutablePath() != nil
+        versionItem.isEnabled = !isUpdatingSplash
+    }
+
+    /// `splash --version` of the executable the current selection uses.
+    func splashVersion() -> String {
+        splashVersionString(of: selectedSplashExecutablePath(selectedVersion: settings.selectedVersion))
+    }
+
+    /// Short version string of the install found on the user's PATH, or the
+    /// "not installed" label. Used for the "Global" entry of the version menu.
+    func globalVersionString() -> String {
+        guard let executable = globalSplashExecutablePath() else { return tr("model.notinstalled") }
+        let result = runCommand(executable, ["--version"])
+        guard result.status == 0 else { return tr("model.versionunknown") }
+        return result.output.replacingOccurrences(of: "Splash ", with: "")
     }
 
     func refreshSplashVersion() {
         DispatchQueue.global(qos: .utility).async {
-            let version = splashVersion()
+            let version = self.splashVersion()
             DispatchQueue.main.async {
                 self.versionLine.title = tr("status.version", version)
             }
@@ -954,7 +1060,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         var arguments = plist["ProgramArguments"] as? [String] ?? []
         if arguments.isEmpty {
-            guard let splashPath = splashExecutablePath() else {
+            guard let splashPath = selectedSplashExecutablePath(selectedVersion: updatedSettings.selectedVersion) else {
                 return tr("validate.noagent")
             }
             // splash serve requires --model; a newly created agent without
@@ -1161,11 +1267,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func chooseSplashVersion() {
-        guard let brew = brewExecutablePath() else {
-            showSettingsError(tr("settings.error.brew"))
-            return
-        }
-
         isUpdatingSplash = true
         statusLine.title = tr("status.searchingreleases")
         versionItem.isEnabled = false
@@ -1182,17 +1283,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     return
                 }
 
-                let selector = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 310, height: 28), pullsDown: false)
-                selector.addItems(withTitles: releases.map(\.version))
-                let installedVersion = splashVersion().replacingOccurrences(of: "Splash ", with: "")
-                if releases.contains(where: { $0.version == installedVersion }) {
-                    selector.selectItem(withTitle: installedVersion)
+                let selector = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 340, height: 28), pullsDown: false)
+                let globalTitle = tr("version.global.title", self.globalVersionString())
+                selector.addItems(withTitles: [globalTitle] + releases.map(\.version))
+
+                // Preselect the current selection; a selection that is no
+                // longer offered (or a missing global install) falls back to Global.
+                let currentSelection = self.settings.selectedVersion
+                if currentSelection == SplashBarSettings.globalVersion {
+                    selector.selectItem(at: 0)
+                } else if let index = releases.firstIndex(where: { $0.version == currentSelection }) {
+                    selector.selectItem(at: index + 1)
+                } else {
+                    selector.selectItem(at: 0)
                 }
 
                 let alert = NSAlert()
                 alert.messageText = tr("version.pick.title")
-                let details = tr("version.pick.detail", splashVersion())
-                alert.informativeText = details
+                alert.informativeText = tr("version.pick.detail", self.splashVersion())
                 alert.accessoryView = selector
                 alert.addButton(withTitle: tr("version.switch"))
                 alert.addButton(withTitle: tr("settings.cancel"))
@@ -1200,8 +1308,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     self.finishVersionChange()
                     return
                 }
-                let selectedVersion = selector.titleOfSelectedItem ?? releases[0].version
-                self.installSplashVersion(selectedVersion, releases: releases, using: brew)
+                let selectedTitle = selector.titleOfSelectedItem ?? globalTitle
+                let version = selectedTitle == globalTitle ? SplashBarSettings.globalVersion : selectedTitle
+                self.switchToSplashVersion(version, releases: releases)
             }
         }
     }
@@ -1227,130 +1336,127 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return servicePID(serviceTarget) == nil
     }
 
-    func installSplashVersion(_ version: String, releases: [SplashRelease], using brew: String) {
+    /// Switches the Splash version SplashBar uses. `version` is either
+    /// `SplashBarSettings.globalVersion` (the Splash install found on the
+    /// user's PATH, e.g. via Homebrew) or a concrete release version, which
+    /// SplashBar downloads itself into `~/.splashbar/splash-versions/<version>`
+    /// and launches from there. The user's PATH is never modified.
+    func switchToSplashVersion(_ version: String, releases: [SplashRelease]) {
+        let isGlobal = version == SplashBarSettings.globalVersion
         let logURL = versionChangeDiagnostics.begin(version: version)
         versionChangeDiagnostics.record("Selected Splash version: \(version)")
-        showVersionProgress(version: version)
+        let initialText = isGlobal
+            ? tr("version.activating", globalVersionString())
+            : tr("version.installing", version)
+        showVersionProgress(version: version, initialText: initialText)
 
         DispatchQueue.global(qos: .userInitiated).async {
             let serviceTarget = self.target
             let wasLoaded = self.isLoaded()
-            let previousVersion = splashVersion()
-            let previousFormula = self.linkedSplashFormula(using: brew)
-            let targetFormula = "splashbar/splash-versions/splash@\(version)"
+            let previousVersion = self.splashVersion()
             var errorText: String?
-            var warningText: String?
-
-            if previousVersion == "Splash \(version)" {
-                versionChangeDiagnostics.record("No change: Splash \(version) is already active.")
-                versionChangeDiagnostics.record("Application stack trace:\n\(Thread.callStackSymbols.joined(separator: "\n"))")
-                versionChangeDiagnostics.end()
-                DispatchQueue.main.async {
-                    self.finishVersionChange()
-                    self.completeVersionProgress(message: "Splash \(version) ist bereits aktiv.", logURL: logURL)
-                }
-                return
-            }
-
-            guard let release = releases.first(where: { $0.version == version }) else {
-                versionChangeDiagnostics.record("ERROR: Release \(version) was not present in the fetched release list.")
-                versionChangeDiagnostics.record("Application stack trace:\n\(Thread.callStackSymbols.joined(separator: "\n"))")
-                versionChangeDiagnostics.end()
-                DispatchQueue.main.async {
-                    self.finishVersionChange()
-                    self.completeVersionProgress(error: tr("version.error.releasegone"), logURL: logURL)
-                }
-                return
-            }
-
-            if wasLoaded {
-                let stopped = runCommand("/bin/launchctl", ["kill", "SIGTERM", serviceTarget])
-                if stopped.status != 0 || !self.waitForServiceToStop(serviceTarget) {
-                    errorText = tr("version.error.stopstuck", stopped.output)
-                }
-            }
-
-            var targetAvailable = false
-            if errorText == nil {
-                let localTap = runCommand(brew, ["--repository", "splashbar/splash-versions"])
-                if localTap.status != 0 {
-                    let createdTap = runCommand(brew, ["tap-new", "--no-git", "splashbar/splash-versions"])
-                    if createdTap.status != 0 {
-                        errorText = tr("version.error.tapfailed", createdTap.output)
-                    }
-                }
-                if errorText == nil {
-                    let checksum = self.downloadedChecksum(for: release)
-                    if checksum == nil || !self.writeReleaseFormula(release, checksum: checksum ?? "", using: brew) {
-                        errorText = tr("version.error.checksumfailed", version)
-                    }
-                }
-
-                if errorText == nil {
-                    if let previousFormula, previousFormula != targetFormula {
-                        let unlinked = runCommand(brew, ["unlink", previousFormula])
-                        if unlinked.status != 0 {
-                            errorText = "Die aktive Formel \(previousFormula) konnte vor dem Wechsel nicht getrennt werden:\n\(unlinked.output)"
-                        }
-                    }
-                }
-
-                if errorText == nil {
-                    let installed = runCommand(brew, ["list", "--versions", targetFormula])
-                    if installed.status != 0 {
-                        let install = runCommand(brew, ["install", targetFormula])
-                        if install.status != 0 {
-                            errorText = "Splash \(version) konnte nicht installiert werden:\n\(install.output)"
-                        }
-                    }
-                }
-
-                if errorText == nil {
-                    let linked = runCommand(brew, ["link", "--overwrite", targetFormula])
-                    let selectedVersion = splashVersion()
-                    targetAvailable = linked.status == 0 || selectedVersion == "Splash \(version)"
-                    if !targetAvailable {
-                        errorText = "Splash \(version) wurde installiert, aber die aktive Version konnte nicht umgeschaltet werden:\n\(linked.output)"
-                    }
-                }
-
-                if errorText != nil, let previousFormula, previousFormula != targetFormula {
-                    let restored = runCommand(brew, ["link", "--overwrite", previousFormula])
-                    if restored.status != 0 {
-                        warningText = "Die vorherige Formel \(previousFormula) konnte nicht automatisch wiederhergestellt werden:\n\(restored.output)"
-                    }
-                }
-            }
-
             var restartText: String?
-            if wasLoaded {
-                let restarted = runCommand("/bin/launchctl", ["kickstart", "-k", serviceTarget])
-                if restarted.status != 0 {
-                    restartText = tr("version.error.notstarted", restarted.output)
+            var agentChanged = false
+
+            // 1. Release versions are used from ~/.splashbar/splash-versions;
+            // download the missing pieces first. The wrapper is a generated
+            // file, so it is (re)created in any case.
+            if !isGlobal, errorText == nil {
+                let versionDirectory = splashVersionsDirectory()
+                    .appendingPathComponent(version, isDirectory: true)
+                if !localVersionIsComplete(version) {
+                    if let error = self.ensureLocalVersion(version, releases: releases) {
+                        errorText = error
+                    }
+                }
+                if errorText == nil {
+                    _ = writeSplashVersionWrapper(in: versionDirectory)
                 }
             }
 
-            let installedVersion = splashVersion()
+            // 2. Resolve the executable the selection points at.
+            let executablePath = selectedSplashExecutablePath(selectedVersion: version)
+            if errorText == nil, executablePath == nil {
+                errorText = isGlobal
+                    ? tr("version.error.notfound")
+                    : tr("version.error.wrapper", version)
+            }
+            guard errorText == nil, let executablePath else {
+                let briefError = tr("version.error.install")
+                versionChangeDiagnostics.record("ERROR: \(briefError)")
+                versionChangeDiagnostics.record("Application stack trace:\n\(Thread.callStackSymbols.joined(separator: "\n"))")
+                versionChangeDiagnostics.end()
+                DispatchQueue.main.async {
+                    self.finishVersionChange()
+                    self.completeVersionProgress(error: briefError, logURL: logURL)
+                }
+                return
+            }
+
+            // 3. Persist the selection.
+            self.showVersionPhase(tr("version.activating", version), spinner: true)
+            var updated = self.settings
+            updated.selectedVersion = version
+            updated.save()
+            self.settings = updated
+
+            // 4. The executable path in the LaunchAgent definition changes,
+            // so a loaded service must be unloaded and re-bootstrapped.
+            let currentAgentPath = readAgentPlist(at: self.settings.agentPlistPath)?["ProgramArguments"] as? [String]
+            if currentAgentPath?.first != executablePath {
+                agentChanged = true
+                if wasLoaded {
+                    let stopped = runCommand("/bin/launchctl", ["kill", "SIGTERM", serviceTarget])
+                    if stopped.status != 0 || !self.waitForServiceToStop(serviceTarget) {
+                        errorText = tr("version.error.stopstuck", stopped.output)
+                    }
+                    if errorText == nil {
+                        let unloaded = runCommand("/bin/launchctl", ["bootout", serviceTarget])
+                        if unloaded.status != 0 {
+                            errorText = tr("version.error.unloadfailed", unloaded.output)
+                        }
+                    }
+                }
+                if errorText == nil, let pointError = self.pointAgentAt(executablePath) {
+                    errorText = pointError
+                }
+                if errorText == nil, wasLoaded {
+                    let started = runCommand("/bin/launchctl", ["bootstrap", "gui/\(self.uid)", expandedPath(self.settings.agentPlistPath)])
+                    if started.status != 0 {
+                        restartText = tr("version.error.notstarted", started.output)
+                    }
+                }
+            } else {
+                versionChangeDiagnostics.record("No change: the LaunchAgent already points at \(executablePath).")
+            }
+
+            // 5. Report.
+            let installedVersion = self.splashVersion()
             versionChangeDiagnostics.record("Previous version: \(previousVersion)")
-            versionChangeDiagnostics.record("Installed version after attempt: \(installedVersion)")
-            if let warningText { versionChangeDiagnostics.record("WARNING: \(warningText)") }
+            versionChangeDiagnostics.record("Version after the switch: \(installedVersion)")
             if let errorText { versionChangeDiagnostics.record("ERROR: \(errorText)") }
             if let restartText { versionChangeDiagnostics.record("ERROR: \(restartText)") }
             if errorText != nil || restartText != nil {
                 versionChangeDiagnostics.record("Application stack trace:\n\(Thread.callStackSymbols.joined(separator: "\n"))")
             }
             versionChangeDiagnostics.end()
+
             let failureText = [errorText, restartText].compactMap { $0 }.joined(separator: "\n\n")
+            let displayName = installedVersion.replacingOccurrences(of: "Splash ", with: "")
+            let successMessage = !agentChanged && failureText.isEmpty
+                ? tr("version.alreadyactive", displayName)
+                : tr("version.success", installedVersion)
+            let briefError = restartText != nil
+                ? tr("version.error.restart")
+                : tr("version.error.install")
+
             DispatchQueue.main.async {
                 self.finishVersionChange()
                 self.versionLine.title = tr("status.version", installedVersion)
                 self.refresh()
-                if failureText.isEmpty && targetAvailable {
-                    self.completeVersionProgress(message: tr("version.success", installedVersion), logURL: logURL)
+                if failureText.isEmpty {
+                    self.completeVersionProgress(message: successMessage, logURL: logURL)
                 } else {
-                    let briefError = restartText != nil
-                        ? tr("version.error.restart")
-                        : tr("version.error.install")
                     self.completeVersionProgress(error: briefError, logURL: logURL)
                 }
             }
@@ -1359,11 +1465,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func finishVersionChange() {
         isUpdatingSplash = false
-        versionItem.isEnabled = brewExecutablePath() != nil
+        versionItem.isEnabled = true
         refresh()
     }
 
-    func showVersionProgress(version: String) {
+    func showVersionProgress(version: String, initialText: String) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 540, height: 230),
             styleMask: [.titled, .closable],
@@ -1374,12 +1480,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         window.isReleasedWhenClosed = false
 
         let content = NSView(frame: NSRect(x: 0, y: 0, width: 540, height: 230))
-        let text = NSTextField(wrappingLabelWithString: tr("version.installing", version))
+        let text = NSTextField(wrappingLabelWithString: initialText)
         text.frame = NSRect(x: 24, y: 76, width: 492, height: 130)
         text.font = .systemFont(ofSize: 14)
         content.addSubview(text)
 
-        let spinner = NSProgressIndicator(frame: NSRect(x: 24, y: 38, width: 20, height: 20))
+        let bar = NSProgressIndicator(frame: NSRect(x: 24, y: 44, width: 400, height: 20))
+        bar.style = .bar
+        bar.isIndeterminate = false
+        bar.minValue = 0
+        bar.maxValue = 1
+        bar.isHidden = true
+        content.addSubview(bar)
+
+        let spinner = NSProgressIndicator(frame: NSRect(x: 436, y: 38, width: 20, height: 20))
         spinner.style = .spinning
         spinner.isIndeterminate = true
         spinner.startAnimation(nil)
@@ -1399,6 +1513,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         window.contentView = content
         versionProgressWindow = window
         versionProgressText = text
+        versionProgressBar = bar
         versionProgressSpinner = spinner
         versionLogButton = logButton
         versionCloseButton = closeButton
@@ -1410,6 +1525,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func completeVersionProgress(message: String? = nil, error: String? = nil, logURL: URL?) {
         versionProgressSpinner?.stopAnimation(nil)
         versionProgressSpinner?.isHidden = true
+        versionProgressBar?.stopAnimation(nil)
+        versionProgressBar?.isHidden = true
         versionProgressText?.stringValue = error.map { briefError in
             tr("version.error.text", briefError, logURL?.path ?? tr("version.error.donelog"))
         } ?? (message ?? tr("version.progressdone"))
@@ -1431,108 +1548,213 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         versionProgressWindow?.close()
         versionProgressWindow = nil
         versionProgressText = nil
+        versionProgressBar = nil
         versionProgressSpinner = nil
         versionLogButton = nil
         versionCloseButton = nil
         versionProgressLogURL = nil
     }
 
-    func downloadedChecksum(for release: SplashRelease) -> String? {
-        let checksumFile = FileManager.default.temporaryDirectory
-            .appendingPathComponent("splashbar-\(UUID().uuidString).sha256")
-        defer { try? FileManager.default.removeItem(at: checksumFile) }
+    /// Updates the progress window text and shows the spinner (indeterminate
+    /// phase). Must be called on the main thread.
+    func showVersionPhase(_ text: String, spinner: Bool) {
+        versionProgressText?.stringValue = text
+        versionProgressSpinner?.isHidden = !spinner
+        versionProgressBar?.isHidden = spinner
+    }
+
+    /// Updates the download progress bar. Must be called on the main thread.
+    func showVersionDownloadProgress(_ version: String, downloaded: Int, total: Int) {
+        versionProgressSpinner?.isHidden = true
+        versionProgressBar?.isHidden = false
+        if total > 0 {
+            versionProgressBar?.isIndeterminate = false
+            versionProgressBar?.minValue = 0
+            versionProgressBar?.maxValue = Double(total)
+            versionProgressBar?.doubleValue = Double(min(downloaded, total))
+            versionProgressText?.stringValue = tr(
+                "version.downloading", version, formatBytes(downloaded), formatBytes(total)
+            )
+        } else {
+            versionProgressBar?.isIndeterminate = true
+        }
+    }
+
+    /// Sets whether the download progress poller runs.
+    func setVersionDownloadActive(_ active: Bool) {
+        versionDownloadLock.lock()
+        versionDownloadActive = active
+        versionDownloadLock.unlock()
+    }
+
+    func isVersionDownloadActive() -> Bool {
+        versionDownloadLock.lock()
+        defer { versionDownloadLock.unlock() }
+        return versionDownloadActive
+    }
+
+    /// Downloads, verifies and extracts a release into
+    /// `~/.splashbar/splash-versions/<version>`, mirroring the way Homebrew
+    /// keeps versioned installs side by side. Shows a progress bar while the
+    /// archive is downloaded. Returns a localized error message on failure.
+    func ensureLocalVersion(_ version: String, releases: [SplashRelease]) -> String? {
+        guard let release = releases.first(where: { $0.version == version }) else {
+            return tr("version.error.releasegone")
+        }
+
+        let fileManager = FileManager.default
+        let versionsRoot = splashVersionsDirectory()
+        let finalDirectory = versionsRoot.appendingPathComponent(version, isDirectory: true)
+        do {
+            try fileManager.createDirectory(at: versionsRoot, withIntermediateDirectories: true)
+        } catch {
+            return tr("version.error.download", version, error.localizedDescription)
+        }
+
+        let archiveURL = fileManager.temporaryDirectory
+            .appendingPathComponent("splashbar-\(version)-\(UUID().uuidString).tar.gz")
+        defer { try? fileManager.removeItem(at: archiveURL) }
+
+        // 1. Download, with a progress bar driven by a polling thread.
+        setVersionDownloadActive(true)
+        let poller = Thread { [weak self] in
+            while let self, self.isVersionDownloadActive() {
+                let downloaded = (try? fileManager.attributesOfItem(atPath: archiveURL.path)[.size] as? Int) ?? 0
+                let total = release.size
+                let versionText = version
+                DispatchQueue.main.async {
+                    self.showVersionDownloadProgress(versionText, downloaded: downloaded, total: total)
+                }
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        }
+        poller.start()
 
         let download = runCommand("/usr/bin/curl", [
             "--fail", "--silent", "--show-error", "--location",
-            "--output", checksumFile.path,
+            "--output", archiveURL.path,
+            release.archiveURL
+        ])
+        setVersionDownloadActive(false)
+        guard download.status == 0 else {
+            return tr("version.error.download", version, download.output)
+        }
+
+        // 2. Verify the downloaded archive against the published SHA-256.
+        showVersionPhase(tr("version.verifying", version), spinner: true)
+        guard let expected = publishedChecksum(for: release) else {
+            return tr("version.error.checksum", version)
+        }
+        guard let actual = sha256OfFile(archiveURL), actual == expected else {
+            return tr("version.error.checksum", version)
+        }
+
+        // 3. Extract into a staging directory, then swap it into place so the
+        // version directory never holds a half-extracted install.
+        showVersionPhase(tr("version.extracting", version), spinner: true)
+        let staging = versionsRoot
+            .appendingPathComponent(".\(version)-staging-\(UUID().uuidString.prefix(8))", isDirectory: true)
+        do {
+            try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
+        } catch {
+            return tr("version.error.extract", version, error.localizedDescription)
+        }
+
+        let listing = runCommand("/usr/bin/tar", ["-tzf", archiveURL.path])
+        guard listing.status == 0 else {
+            try? fileManager.removeItem(at: staging)
+            return tr("version.error.extract", version, listing.output)
+        }
+        let topLevel = Set(
+            listing.output.split(separator: "\n")
+                .compactMap { $0.split(separator: "/").first }
+                .map(String.init)
+        )
+        guard topLevel.count == 1 else {
+            try? fileManager.removeItem(at: staging)
+            return tr("version.error.extract", version, tr("version.error.unexpectedlayout"))
+        }
+
+        let extract = runCommand("/usr/bin/tar", ["-xzf", archiveURL.path, "-C", staging.path, "--strip-components=1"])
+        guard extract.status == 0, versionMarkersPresent(in: staging) else {
+            try? fileManager.removeItem(at: staging)
+            return tr("version.error.extract", version, extract.output)
+        }
+        guard writeSplashVersionWrapper(in: staging) else {
+            try? fileManager.removeItem(at: staging)
+            return tr("version.error.wrapper", version)
+        }
+
+        if fileManager.fileExists(atPath: finalDirectory.path) {
+            do {
+                try fileManager.removeItem(at: finalDirectory)
+            } catch {
+                try? fileManager.removeItem(at: staging)
+                return tr("version.error.extract", version, error.localizedDescription)
+            }
+        }
+        do {
+            try fileManager.moveItem(at: staging, to: finalDirectory)
+        } catch {
+            try? fileManager.removeItem(at: staging)
+            return tr("version.error.extract", version, error.localizedDescription)
+        }
+        return nil
+    }
+
+    /// Rewrites the first entry of the LaunchAgent's ProgramArguments to the
+    /// given executable path, preserving all other plist keys. Returns nil
+    /// when the agent points at the new executable or no agent is configured,
+    /// or a localized error message.
+    func pointAgentAt(_ executablePath: String) -> String? {
+        let plistURL = URL(fileURLWithPath: expandedPath(settings.agentPlistPath))
+        guard let data = try? Data(contentsOf: plistURL),
+              let value = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
+              var plist = value as? [String: Any] else {
+            return nil  // No LaunchAgent configured; the selection applies once one is.
+        }
+        var arguments = plist["ProgramArguments"] as? [String] ?? []
+        guard !arguments.isEmpty,
+              URL(fileURLWithPath: arguments[0]).lastPathComponent == "splash" else {
+            return tr("validate.badplist")
+        }
+        arguments[0] = executablePath
+        plist["ProgramArguments"] = arguments
+        do {
+            try FileManager.default.createDirectory(at: plistURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let out = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            try out.write(to: plistURL, options: .atomic)
+            return nil
+        } catch {
+            return tr("validate.savfailed", error.localizedDescription)
+        }
+    }
+
+    /// Fetches the release's `.sha256` file and returns the published digest.
+    func publishedChecksum(for release: SplashRelease) -> String? {
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("splashbar-\(UUID().uuidString).sha256")
+        let download = runCommand("/usr/bin/curl", [
+            "--fail", "--silent", "--show-error", "--location",
+            "--output", file.path,
             release.checksumURL
         ])
         guard download.status == 0,
-              let contents = try? String(contentsOf: checksumFile, encoding: .utf8),
-              let pattern = try? NSRegularExpression(pattern: #"\b([a-fA-F0-9]{64})\b"#),
+              let contents = try? String(contentsOf: file, encoding: .utf8) else {
+            try? FileManager.default.removeItem(at: file)
+            return nil
+        }
+        try? FileManager.default.removeItem(at: file)
+        guard let pattern = try? NSRegularExpression(pattern: #"\b([a-fA-F0-9]{64})\b"#),
               let match = pattern.firstMatch(in: contents, range: NSRange(contents.startIndex..., in: contents)),
               let range = Range(match.range(at: 1), in: contents) else { return nil }
         return String(contents[range]).lowercased()
     }
 
-    func writeReleaseFormula(_ release: SplashRelease, checksum: String, using brew: String) -> Bool {
-        guard release.version.range(of: #"^\d+(?:\.\d+){1,3}$"#, options: .regularExpression) != nil,
-              release.archiveURL.hasPrefix("https://github.com/incoai/splash/releases/download/"),
-              checksum.range(of: #"^[a-fA-F0-9]{64}$"#, options: .regularExpression) != nil else { return false }
-
-        let tap = runCommand(brew, ["--repository", "splashbar/splash-versions"])
-        guard tap.status == 0 else { return false }
-        let formulaDirectory = URL(fileURLWithPath: tap.output).appendingPathComponent("Formula", isDirectory: true)
-        do {
-            try FileManager.default.createDirectory(at: formulaDirectory, withIntermediateDirectories: true)
-        } catch {
-            return false
-        }
-
-        let classSuffix = release.version.split(separator: ".").joined()
-        let formula = """
-        class SplashMacOSRequirement < Requirement
-          fatal true
-          satisfy(build_env: false) { OS.mac? && MacOS.full_version >= "26.4" }
-
-          def message
-            "Splash requires macOS 26.4 or newer."
-          end
-        end
-
-        class SplashAT\(classSuffix) < Formula
-          desc "Local inference engine for Apple silicon, built around the model"
-          homepage "https://github.com/incoai/splash"
-          url "\(release.archiveURL)"
-          version "\(release.version)"
-          sha256 "\(checksum)"
-          license "Apache-2.0"
-
-          depends_on arch: :arm64
-          depends_on macos: :tahoe
-          depends_on SplashMacOSRequirement
-
-          def install
-            libexec.install Dir["*"]
-            (bin/"splash").write <<~SH
-              #!/bin/sh
-              export PYTHONDONTWRITEBYTECODE=1
-              exec "#{opt_libexec}/python/bin/python3" -u "#{opt_libexec}/install/launcher.py" "$@"
-            SH
-            chmod 0755, bin/"splash"
-            zsh_completion.install_symlink libexec/"install/completions/_splash"
-            bash_completion.install_symlink libexec/"install/completions/splash.bash" => "splash"
-            fish_completion.install_symlink libexec/"install/completions/splash.fish"
-          end
-
-          test do
-            assert_match version.to_s, shell_output("#{bin}/splash --version")
-            assert_match "serve", shell_output("#{bin}/splash --help")
-          end
-        end
-        """
-
-        let formulaURL = formulaDirectory.appendingPathComponent("splash@\(release.version).rb")
-        do {
-            try Data(formula.utf8).write(to: formulaURL, options: .atomic)
-            return true
-        } catch {
-            return false
-        }
-    }
-
-    func linkedSplashFormula(using brew: String) -> String? {
-        let prefix = runCommand(brew, ["--prefix"])
-        guard prefix.status == 0 else { return nil }
-        let executable = prefix.output + "/bin/splash"
-        let link = runCommand("/usr/bin/readlink", [executable])
-        guard link.status == 0 else { return nil }
-        let components = link.output.split(separator: "/").map(String.init)
-        guard let cellarIndex = components.firstIndex(of: "Cellar"), components.indices.contains(cellarIndex + 1) else { return nil }
-        let formula = components[cellarIndex + 1]
-        if formula == "splash" { return "incoai/tap/splash" }
-        if formula.hasPrefix("splash@") { return "splashbar/splash-versions/\(formula)" }
-        return nil
+    func sha256OfFile(_ url: URL) -> String? {
+        let result = runCommand("/usr/bin/shasum", ["-a", "256", url.path])
+        guard result.status == 0 else { return nil }
+        return result.output.split(separator: " ").first.map { $0.lowercased() }
     }
 
     @objc func quit() { NSApp.terminate(nil) }

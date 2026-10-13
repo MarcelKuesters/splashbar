@@ -30,7 +30,10 @@ seven languages (de, en, fr, es, ja, zh, ru).
 - Opens the chat UI at `http://127.0.0.1:8080` and the server log
 - Selects the model ID passed to `splash serve --model`
 - Chooses the context size passed to `splash serve --max-context` (auto = the model's native window)
-- Shows the installed Splash version and can install or switch between published stable GitHub releases
+- Shows the Splash version in use and can switch between the globally installed
+  Splash and published stable GitHub releases; release versions are downloaded
+  to `~/.splashbar/splash-versions` and used by SplashBar only, without touching
+  your PATH
 - Shows the model that is currently loaded (live, from the server's `/v1/models`)
 
 No dependencies, no installer, no daemon of its own — one Swift file, built
@@ -40,7 +43,9 @@ with the Swift toolchain that ships with macOS.
 
 - macOS 14+
 - [Splash](https://github.com/incoai/splash) installed and running as the
-  launchd agent `local.llm.splash` with the chat page on port 8080
+  launchd agent `local.llm.splash` with the chat page on port 8080 — or pick
+  one of the stable GitHub releases in the version menu; SplashBar then
+  manages its own copy in `~/.splashbar/splash-versions`
 - `footprint` tool from Apple's `dev-tools` package (for the memory readout;
   without it the app still works, just shows no number)
 
@@ -101,11 +106,15 @@ itself guarantee that its model format is supported by the installed Splash
 version. A separate editable field accepts a custom repository ID.
 
 **Splash-Version auswählen …** loads the stable releases from the official
-GitHub Releases API. It offers releases that include the macOS ARM64 runtime
-archive and its SHA-256 checksum. SplashBar writes a version-specific formula
-to a local, non-Git Homebrew tap; Homebrew verifies the downloaded archive
-against the release checksum and keeps versions side by side for later
-switching. SplashBar asks before the switch and restarts a loaded server
+GitHub Releases API. The first entry is the Splash installed on your system
+(for example via Homebrew), checked against the `splash` executable on your
+PATH; the remaining entries are stable releases that include the macOS ARM64
+runtime archive and its SHA-256 checksum. Selecting a release version
+downloads the archive (with a progress bar) and extracts it to
+`~/.splashbar/splash-versions/<version>` — nvm-style, with every version
+kept side by side for later switching. SplashBar uses these local copies
+internally only; nothing else on your system, including your PATH, is
+modified. SplashBar asks before the switch and restarts a loaded server
 afterward; a stopped server remains stopped. Check model compatibility before
 switching; Splash 1.3.1, for example, no longer loads the older `*-Splash`
 packages. After confirming a version change, SplashBar shows a progress window.
