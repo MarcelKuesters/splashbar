@@ -835,10 +835,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let healthURL = currentSettings.serverURL
                     .appendingPathComponent("v1")
                     .appendingPathComponent("models")
-                let code = sh("curl -s -m \(shellQuote(String(currentSettings.requestTimeout))) -o /dev/null -w '%{http_code}' \(shellQuote(healthURL.absoluteString))")
+                var probeArguments = ["-s", "-m", shellQuote(String(currentSettings.requestTimeout))]
+                probeArguments += self.apiKeyHeaderArguments(currentSettings.apiKey)
+                probeArguments += ["-o", "/dev/null", "-w", shellQuote("%{http_code}"), shellQuote(healthURL.absoluteString)]
+                let code = sh("curl " + probeArguments.joined(separator: " "))
                 let child = sh("pgrep -P \(shellQuote(pid)) | head -1")
                 memoryGB = footprintGB(child.isEmpty ? pid : child)
-                model = self.currentModel(healthURL, timeout: currentSettings.requestTimeout)
+                model = self.currentModel(
+                    healthURL,
+                    timeout: currentSettings.requestTimeout,
+                    apiKey: currentSettings.apiKey
+                )
                 if code == "200" {
                     state = memoryGB < currentSettings.idleThresholdGB ? .idle : .running
                 } else {
@@ -849,10 +856,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// curl arguments that add the `x-api-key` header for a configured key,
+    /// so a server started with `--api-key` accepts the request. An empty key
+    /// leaves the request unauthenticated.
+    private func apiKeyHeaderArguments(_ apiKey: String) -> [String] {
+        apiKey.isEmpty ? [] : ["-H", shellQuote("x-api-key: \(apiKey)")]
+    }
+
     /// Liest das gerade geladene Modell vom Server (z. B. "mlx-community/Qwen3.8-27B-4bit")
     /// und hält die Menüzeile mit einer Kürzung auf 34 Zeichen schmal.
-    func currentModel(_ url: URL, timeout: TimeInterval) -> String {
-        let raw = sh("curl -s -m \(shellQuote(String(timeout))) \(shellQuote(url.absoluteString))")
+    /// Ein konfigurierter API-Key wird als `x-api-key`-Header mitgegeben, damit
+    /// ein mit `--api-key` gestarteter Server die Anfrage beantwortet.
+    func currentModel(_ url: URL, timeout: TimeInterval, apiKey: String = "") -> String {
+        var arguments = ["-s", "-m", shellQuote(String(timeout))]
+        arguments += apiKeyHeaderArguments(apiKey)
+        arguments.append(shellQuote(url.absoluteString))
+        let raw = sh("curl " + arguments.joined(separator: " "))
         guard let data = raw.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
               let dict = object as? [String: Any] else { return "" }
