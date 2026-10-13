@@ -86,9 +86,10 @@
 %1$@
 
 完整错误日志/堆栈跟踪：%2$@";
+"version.installed" = "（已安装）";
 "version.installing" = "正在安装 Splash %1$@。
 操作进行中，请等待完成。";
-"version.pick.detail" = "第一个选项是系统中安装的 Splash（例如通过 Homebrew）。其他选项是 GitHub 已发布的稳定版本；它们会下载到 ~/.splashbar/splash-versions，仅供 SplashBar 使用，不会改动你的 PATH。已安装： %1$@。正在运行的 Splash 服务器会在切换期间停止，之后再次启动。
+"version.pick.detail" = "第一个选项是系统中安装的 Splash（例如通过 Homebrew）。其他选项是 GitHub 已发布的稳定版本；它们会下载到 ~/.splashbar/splash-versions，仅供 SplashBar 使用，不会改动你的 PATH。已安装： %1$@。正在运行的 Splash 服务器会在切换期间停止，之后再次启动。如果无法加载 GitHub 发布列表，将改为列出 ~/.splashbar/splash-versions 中本地已安装的版本；本地已安装的版本会标有（已安装）。
 
 切换前请检查与你的模型的兼容性。";
 "version.pick.title" = "选择Splash版本";

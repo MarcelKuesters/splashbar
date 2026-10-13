@@ -86,9 +86,10 @@
 %1$@
 
 Full error log / stack trace: %2$@";
+"version.installed" = " (installed)";
 "version.installing" = "Splash %1$@ is being installed.
 The operation is in progress; please wait until it is finished.";
-"version.pick.detail" = "The first entry is the Splash installed on your system (for example via Homebrew). The other entries are stable versions from the GitHub releases; they are downloaded to ~/.splashbar/splash-versions and used by SplashBar only, without touching your PATH. Installed: %1$@. A running Splash server is stopped during the switch and started again afterwards.
+"version.pick.detail" = "The first entry is the Splash installed on your system (for example via Homebrew). The other entries are stable versions from the GitHub releases; they are downloaded to ~/.splashbar/splash-versions and used by SplashBar only, without touching your PATH. Installed: %1$@. A running Splash server is stopped during the switch and started again afterwards. If the GitHub release list cannot be loaded, the locally installed versions from ~/.splashbar/splash-versions are listed instead; locally installed versions are marked (installed).
 
 Check compatibility with your model before switching.";
 "version.pick.title" = "Choose Splash version";

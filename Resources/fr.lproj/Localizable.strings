@@ -86,9 +86,10 @@
 %1$@
 
 Journal d'erreurs / trace complète : %2$@";
+"version.installed" = " (installée)";
 "version.installing" = "Installation de Splash %1$@.
 L'opération est en cours ; veuillez attendre qu'elle soit terminée.";
-"version.pick.detail" = "La première entrée est la Splash installée sur votre système (par exemple via Homebrew). Les autres entrées sont des versions stables des releases GitHub ; elles sont téléchargées dans ~/.splashbar/splash-versions et utilisées uniquement par SplashBar, sans modifier votre PATH. Installée : %1$@. Un serveur Splash en cours est arrêté pendant le changement puis relancé.
+"version.pick.detail" = "La première entrée est la Splash installée sur votre système (par exemple via Homebrew). Les autres entrées sont des versions stables des releases GitHub ; elles sont téléchargées dans ~/.splashbar/splash-versions et utilisées uniquement par SplashBar, sans modifier votre PATH. Installée : %1$@. Un serveur Splash en cours est arrêté pendant le changement puis relancé. Si la liste des releases GitHub ne peut pas être chargée, les versions installées localement dans ~/.splashbar/splash-versions sont listées à la place ; les versions installées localement sont marquées (installée).
 
 Vérifiez la compatibilité avec votre modèle avant de changer.";
 "version.pick.title" = "Choisir la version de Splash";

@@ -478,6 +478,29 @@ func localVersionIsComplete(_ version: String) -> Bool {
     return versionMarkersPresent(in: directory)
 }
 
+/// The versions SplashBar has downloaded into `~/.splashbar/splash-versions`,
+/// newest first. Staging leftovers and other non-version entries are ignored.
+func localSplashVersions() -> [String] {
+    let directory = splashVersionsDirectory()
+    guard let entries = try? FileManager.default.contentsOfDirectory(
+        at: directory,
+        includingPropertiesForKeys: [.isDirectoryKey],
+        options: [.skipsHiddenFiles]
+    ) else { return [] }
+    var isDirectory: ObjCBool = false
+    let versions = entries
+        .filter {
+            $0.lastPathComponent.range(of: #"^\d+(?:\.\d+){1,3}$"#, options: .regularExpression) != nil
+                && FileManager.default.fileExists(atPath: $0.path, isDirectory: &isDirectory)
+                && isDirectory.boolValue
+        }
+        .map(\.lastPathComponent)
+    return versions.sorted { lhs, rhs in
+        guard let result = compareVersions(lhs, rhs), result != .orderedSame else { return lhs > rhs }
+        return result == .orderedDescending
+    }
+}
+
 /// The release archives ship no `splash` executable; Homebrew generates one
 /// as a wrapper around the bundled Python interpreter. We do the same so the
 /// extracted directory is self-contained and works from any working directory.
@@ -1394,8 +1417,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         DispatchQueue.global(qos: .userInitiated).async {
             let releases = availableSplashReleases()
+            let localVersions = localSplashVersions()
             DispatchQueue.main.async {
-                guard !releases.isEmpty else {
+                // The GitHub release list and the locally installed versions
+                // are merged into one selector: releases that are also present
+                // locally are marked (installed), and locally installed
+                // versions missing from the release list are offered as well.
+                // When the release list cannot be loaded at all (no network,
+                // GitHub down), the locally installed versions are the only
+                // entries; without any of them there is nothing to select.
+                let releaseVersions = releases.map(\.version)
+                let mergedVersions = (releaseVersions
+                    + localVersions.filter { !releaseVersions.contains($0) })
+                    .sorted { lhs, rhs in
+                        guard let result = compareVersions(lhs, rhs), result != .orderedSame else { return lhs > rhs }
+                        return result == .orderedDescending
+                    }
+                guard !mergedVersions.isEmpty else {
                     self.finishVersionChange()
                     self.showSettingsError(tr("settings.error.releases"))
                     return
@@ -1403,14 +1441,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
                 let selector = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 340, height: 28), pullsDown: false)
                 let globalTitle = tr("version.global.title", self.globalVersionString())
-                selector.addItems(withTitles: [globalTitle] + releases.map(\.version))
+                let globalItem = NSMenuItem(title: globalTitle, action: nil, keyEquivalent: "")
+                globalItem.representedObject = SplashBarSettings.globalVersion
+                selector.menu?.addItem(globalItem)
+                for version in mergedVersions {
+                    let suffix = localVersions.contains(version) ? tr("version.installed") : ""
+                    let item = NSMenuItem(title: version + suffix, action: nil, keyEquivalent: "")
+                    item.representedObject = version
+                    selector.menu?.addItem(item)
+                }
 
                 // Preselect the current selection; a selection that is no
                 // longer offered (or a missing global install) falls back to Global.
                 let currentSelection = self.settings.selectedVersion
                 if currentSelection == SplashBarSettings.globalVersion {
                     selector.selectItem(at: 0)
-                } else if let index = releases.firstIndex(where: { $0.version == currentSelection }) {
+                } else if let index = mergedVersions.firstIndex(of: currentSelection) {
                     selector.selectItem(at: index + 1)
                 } else {
                     selector.selectItem(at: 0)
@@ -1426,8 +1472,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     self.finishVersionChange()
                     return
                 }
-                let selectedTitle = selector.titleOfSelectedItem ?? globalTitle
-                let version = selectedTitle == globalTitle ? SplashBarSettings.globalVersion : selectedTitle
+                // The item's represented object (not its display title, which
+                // carries the (installed) suffix) is the version to switch to.
+                let version = selector.menu?.item(at: selector.indexOfSelectedItem)?.representedObject as? String
+                    ?? SplashBarSettings.globalVersion
                 self.switchToSplashVersion(version, releases: releases)
             }
         }

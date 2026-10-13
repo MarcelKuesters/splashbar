@@ -118,7 +118,10 @@ version. A separate editable field accepts a custom repository ID.
 GitHub Releases API. The first entry is the Splash installed on your system
 (for example via Homebrew), checked against the `splash` executable on your
 PATH; the remaining entries are stable releases that include the macOS ARM64
-runtime archive and its SHA-256 checksum. Selecting a release version
+runtime archive and its SHA-256 checksum. If the release list cannot be
+loaded (no network, or GitHub is down), SplashBar lists the versions already
+installed in `~/.splashbar/splash-versions` instead; versions that are
+installed locally are marked `(installed)`. Selecting a release version
 downloads the archive (with a progress bar) and extracts it to
 `~/.splashbar/splash-versions/<version>` — nvm-style, with every version
 kept side by side for later switching. SplashBar uses these local copies

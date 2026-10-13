@@ -86,9 +86,10 @@
 %1$@
 
 Vollständiges Fehlerprotokoll / Stacktrace: %2$@";
+"version.installed" = " (installiert)";
 "version.installing" = "Splash %1$@ wird installiert.
 Der Vorgang läuft; bitte warte, bis er abgeschlossen ist.";
-"version.pick.detail" = "Der erste Eintrag ist die auf deinem System installierte Splash (z. B. über Homebrew). Die weiteren Einträge sind stabile Versionen aus den GitHub-Releases; sie werden nach ~/.splashbar/splash-versions heruntergeladen und nur von SplashBar verwendet, ohne deinen PATH zu verändern. Installiert: %1$@. Ein laufender Splash-Server wird während des Wechsels gestoppt und danach wieder gestartet.
+"version.pick.detail" = "Der erste Eintrag ist die auf deinem System installierte Splash (z. B. über Homebrew). Die weiteren Einträge sind stabile Versionen aus den GitHub-Releases; sie werden nach ~/.splashbar/splash-versions heruntergeladen und nur von SplashBar verwendet, ohne deinen PATH zu verändern. Installiert: %1$@. Ein laufender Splash-Server wird während des Wechsels gestoppt und danach wieder gestartet. Kann die GitHub-Releaseliste nicht geladen werden, werden stattdessen die lokal installierten Versionen aus ~/.splashbar/splash-versions aufgelistet; lokal installierte Versionen sind mit (installiert) markiert.
 
 Prüfe vor dem Wechsel die Kompatibilität mit deinem Modell.";
 "version.pick.title" = "Splash-Version auswählen";

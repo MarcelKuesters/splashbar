@@ -86,9 +86,10 @@
 %1$@
 
 完全なエラーログ/スタックトレース：%2$@";
+"version.installed" = "（インストール済み）";
 "version.installing" = "Splash %1$@ をインストールしています。
 処理が進行中です。完了までお待ちください。";
-"version.pick.detail" = "最初の項目は、システムにインストールされた Splash（例：Homebrew 経由）です。その他の項目は GitHub リリースの安定版で、~/.splashbar/splash-versions にダウンロードされ、SplashBar のみで使用されます。あなたの PATH は変更されません。インストール済み： %1$@。実行中の Splash サーバーは切り替え中に停止され、その後再度始動されます。
+"version.pick.detail" = "最初の項目は、システムにインストールされた Splash（例：Homebrew 経由）です。その他の項目は GitHub リリースの安定版で、~/.splashbar/splash-versions にダウンロードされ、SplashBar のみで使用されます。あなたの PATH は変更されません。インストール済み： %1$@。実行中の Splash サーバーは切り替え中に停止され、その後再度始動されます。GitHubリリース一覧を読み込めない場合は、~/.splashbar/splash-versions のローカルインストール済みバージョンが代わりに一覧表示されます。ローカルインストール済みのバージョンには（インストール済み）のマークが付きます。
 
 切り替える前にモデルとの互換性を確認してください。";
 "version.pick.title" = "Splashバージョンを選択";
