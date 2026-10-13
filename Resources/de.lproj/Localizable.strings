@@ -22,7 +22,7 @@
 "model.pick.title" = "Modellordner auswählen";
 "model.placeholder" = "Keine Modelle gefunden";
 "model.restart" = "Änderungen an Splash anwenden?";
-"model.restart.detail" = "Du kannst den laufenden Server jetzt neu starten, um das neue Modell und/oder die neue Kontextgröße zu übernehmen, oder die Änderungen speichern und sie beim nächsten Start des Servers anwenden. Falls das Modell noch nicht vorhanden ist, kann Splash es herunterladen und dabei viel Speicherplatz und Arbeitsspeicher verwenden.";
+"model.restart.detail" = "Du kannst den laufenden Server jetzt neu starten, um das neue Modell, die Kontextgröße, den API-Schlüssel und/oder den erlaubten Host zu übernehmen, oder die Änderungen speichern und sie beim nächsten Start des Servers anwenden. Falls das Modell noch nicht vorhanden ist, kann Splash es herunterladen und dabei viel Speicherplatz und Arbeitsspeicher verwenden.";
 "model.restart.switch" = "Anwenden und neu starten";
 "model.source.additional" = "Zusätzlicher Ordner";
 "model.source.selected" = "Aktuell ausgewählt";
@@ -36,6 +36,8 @@
 "settings.error.releases" = "Die veröffentlichten Splash-Versionen konnten nicht von GitHub geladen werden. Prüfe die Internetverbindung und versuche es erneut.";
 "settings.field.addpath" = "Zusätzlicher Modellpfad";
 "settings.field.agent" = "LaunchAgent-Label";
+"settings.field.allowedhost" = "Erlaubter Host (--allowed-host)";
+"settings.field.apikey" = "API-Schlüssel (--api-key)";
 "settings.field.compatible" = "✓ Passend für Splash %1$@";
 "settings.field.custom" = "Eigene Modell-ID (--model)";
 "settings.field.context" = "Kontextgröße (--max-context)";

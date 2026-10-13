@@ -13,6 +13,8 @@ struct SplashBarSettings {
     static let defaultIdleThresholdGB = 3.0
     static let defaultModelID = ""
     static let defaultMaxContext = ContextSize.auto
+    static let defaultAPIKey = ""
+    static let defaultAllowedHost = ""
 
     private enum Key {
         static let launchdLabel = "launchdLabel"
@@ -25,6 +27,8 @@ struct SplashBarSettings {
         static let modelID = "modelID"
         static let additionalModelsPath = "additionalModelsPath"
         static let maxContext = "maxContext"
+        static let apiKey = "apiKey"
+        static let allowedHost = "allowedHost"
         static let selectedVersion = "selectedVersion"
     }
 
@@ -38,6 +42,8 @@ struct SplashBarSettings {
     var modelID: String
     var additionalModelsPath: String
     var maxContext: ContextSize
+    var apiKey: String
+    var allowedHost: String
     var selectedVersion: String
 
     init(defaults: UserDefaults = .standard) {
@@ -52,6 +58,8 @@ struct SplashBarSettings {
         modelID = defaults.string(forKey: Key.modelID) ?? Self.defaultModelID
         additionalModelsPath = defaults.string(forKey: Key.additionalModelsPath) ?? ""
         maxContext = ContextSize(rawValue: defaults.string(forKey: Key.maxContext) ?? "") ?? Self.defaultMaxContext
+        apiKey = defaults.string(forKey: Key.apiKey) ?? Self.defaultAPIKey
+        allowedHost = defaults.string(forKey: Key.allowedHost) ?? Self.defaultAllowedHost
         selectedVersion = defaults.string(forKey: Key.selectedVersion) ?? Self.globalVersion
     }
 
@@ -66,6 +74,8 @@ struct SplashBarSettings {
         defaults.set(modelID, forKey: Key.modelID)
         defaults.set(additionalModelsPath, forKey: Key.additionalModelsPath)
         defaults.set(maxContext.rawValue, forKey: Key.maxContext)
+        defaults.set(apiKey, forKey: Key.apiKey)
+        defaults.set(allowedHost, forKey: Key.allowedHost)
         defaults.set(selectedVersion, forKey: Key.selectedVersion)
     }
 }
@@ -568,25 +578,53 @@ func readAgentPlist(at path: String) -> [String: Any]? {
     return value as? [String: Any]
 }
 
-func modelID(in arguments: [String]) -> String? {
-    if let index = arguments.firstIndex(of: "--model"), arguments.indices.contains(index + 1) {
-        return arguments[index + 1]
+/// Reads a simple `--flag <value>` (or `--flag=<value>`) pair from a
+/// LaunchAgent argument list. Returns nil when the flag is absent or its
+/// value is empty.
+func argumentValue(_ flag: String, in arguments: [String]) -> String? {
+    var text: String?
+    if let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) {
+        text = arguments[index + 1]
+    } else if let joined = arguments.first(where: { $0.hasPrefix(flag + "=") }) {
+        text = joined.components(separatedBy: "=").dropFirst().joined(separator: "=")
     }
-    return arguments.first(where: { $0.hasPrefix("--model=") })?.components(separatedBy: "=").dropFirst().joined(separator: "=")
+    guard let text = text, !text.isEmpty else { return nil }
+    return text
+}
+
+func modelID(in arguments: [String]) -> String? {
+    argumentValue("--model", in: arguments)
 }
 
 /// Reads `--max-context` from a LaunchAgent argument list (accepts both
 /// `--max-context 16K` and `--max-context=16K`). Returns nil when the flag
 /// is absent; that is equivalent to `.auto`.
 func contextSize(in arguments: [String]) -> ContextSize? {
-    var text: String?
-    if let index = arguments.firstIndex(of: "--max-context"), arguments.indices.contains(index + 1) {
-        text = arguments[index + 1]
-    } else if let joined = arguments.first(where: { $0.hasPrefix("--max-context=") }) {
-        text = joined.components(separatedBy: "=").dropFirst().joined(separator: "=")
+    argumentValue("--max-context", in: arguments).flatMap {
+        ContextSize(rawValue: $0.trimmingCharacters(in: .whitespaces).uppercased())
     }
-    guard let text = text, !text.isEmpty else { return nil }
-    return ContextSize(rawValue: text.trimmingCharacters(in: .whitespaces).uppercased())
+}
+
+/// Adds or updates a simple `--flag <value>` serve argument in a LaunchAgent
+/// argument list (accepts both `--flag value` and `--flag=value`). An empty
+/// value removes the flag so the argument is left out entirely.
+func upsertServeArgument(_ flag: String, _ value: String, into arguments: inout [String]) {
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty {
+        if let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) {
+            arguments.removeSubrange(index...index + 1)
+        } else if let index = arguments.firstIndex(where: { $0.hasPrefix(flag + "=") }) {
+            arguments.remove(at: index)
+        }
+        return
+    }
+    if let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) {
+        arguments[index + 1] = trimmed
+    } else if let index = arguments.firstIndex(where: { $0.hasPrefix(flag + "=") }) {
+        arguments[index] = "\(flag)=\(trimmed)"
+    } else {
+        arguments += [flag, trimmed]
+    }
 }
 
 @discardableResult
@@ -703,6 +741,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             if let configuredContext = contextSize(in: arguments), configuredContext != settings.maxContext {
                 settings.maxContext = configuredContext
+                settings.save()
+            }
+            if let configuredAPIKey = argumentValue("--api-key", in: arguments), configuredAPIKey != settings.apiKey {
+                settings.apiKey = configuredAPIKey
+                settings.save()
+            }
+            if let configuredAllowedHost = argumentValue("--allowed-host", in: arguments), configuredAllowedHost != settings.allowedHost {
+                settings.allowedHost = configuredAllowedHost
                 settings.save()
             }
         }
@@ -922,6 +968,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let contextField = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 0, height: 0), pullsDown: false)
         contextField.addItems(withTitles: ContextSize.allCases.map { $0.displayName })
         contextField.selectItem(withTitle: settings.maxContext.displayName)
+        let apiKeyField = NSTextField(string: settings.apiKey)
+        let allowedHostField = NSTextField(string: settings.allowedHost)
         compatibleModelField.isEditable = false
         otherModelField.isEditable = false
         compatibleModelsField = compatibleModelField
@@ -947,6 +995,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             (tr("settings.field.other"), otherModelField),
             (tr("settings.field.custom"), customModelField),
             (tr("settings.field.context"), contextField),
+            (tr("settings.field.apikey"), apiKeyField),
+            (tr("settings.field.allowedhost"), allowedHostField),
             (tr("settings.field.agent"), agentLabelField),
             (tr("settings.field.plist"), plistField),
             (tr("settings.field.log"), logField),
@@ -983,6 +1033,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ?? customModelField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let requestedContext = ContextSize.allCases
             .first { $0.displayName == (contextField.titleOfSelectedItem ?? "") } ?? .auto
+        let requestedAPIKey = apiKeyField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestedAllowedHost = allowedHostField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let additionalModelsPath = additionalPathField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let serverURL = validatedServerURL(serverText),
               requestedModel.isEmpty || validatedModelID(requestedModel),
@@ -1013,14 +1065,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updated.idleThresholdGB = idleThresholdGB
         updated.additionalModelsPath = additionalModelsPath
         updated.maxContext = requestedContext
+        updated.apiKey = requestedAPIKey
+        updated.allowedHost = requestedAllowedHost
 
         let agentArguments = readAgentPlist(at: updated.agentPlistPath)?["ProgramArguments"] as? [String] ?? []
         let currentAgentModel = modelID(in: agentArguments)
         let modelChanged = !requestedModel.isEmpty && requestedModel != currentAgentModel
         let currentAgentContext = contextSize(in: agentArguments) ?? .auto
         let contextChanged = requestedContext != currentAgentContext
+        let apiKeyChanged = requestedAPIKey != (argumentValue("--api-key", in: agentArguments) ?? "")
+        let allowedHostChanged = requestedAllowedHost != (argumentValue("--allowed-host", in: agentArguments) ?? "")
 
-        if modelChanged || contextChanged {
+        if modelChanged || contextChanged || apiKeyChanged || allowedHostChanged {
             guard isLocalServerURL(serverURL) else {
                 showSettingsError(tr("settings.error.agent"))
                 return
@@ -1159,6 +1215,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 arguments += ["--max-context", context.rawValue]
             }
         }
+
+        // Optional serve arguments: written only when the user entered a
+        // value, removed entirely when the field is empty.
+        upsertServeArgument("--api-key", updatedSettings.apiKey, into: &arguments)
+        upsertServeArgument("--allowed-host", updatedSettings.allowedHost, into: &arguments)
 
         plist["Label"] = updatedSettings.launchdLabel
         plist["ProgramArguments"] = arguments

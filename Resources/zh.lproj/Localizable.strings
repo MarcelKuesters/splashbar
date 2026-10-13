@@ -22,7 +22,7 @@
 "model.pick.title" = "选择模型文件夹";
 "model.placeholder" = "未找到模型";
 "model.restart" = "要应用对Splash的更改吗？";
-"model.restart.detail" = "您可以立即重启正在运行的服务器，以应用新的模型和/或上下文大小，或者保存更改，在服务器下次启动时再应用。如果模型尚不存在，Splash 可能会下载它，占用大量磁盘空间和内存。";
+"model.restart.detail" = "您可以立即重启正在运行的服务器，以应用新的模型、上下文大小、API 密钥和/或允许的主机，或者保存更改，在服务器下次启动时再应用。如果模型尚不存在，Splash 可能会下载它，占用大量磁盘空间和内存。";
 "model.restart.switch" = "应用并重启";
 "model.source.additional" = "附加文件夹";
 "model.source.selected" = "当前选中";
@@ -36,6 +36,8 @@
 "settings.error.releases" = "无法从 GitHub 加载已发布的 Splash 版本。请检查网络连接并重试。";
 "settings.field.addpath" = "附加模型路径";
 "settings.field.agent" = "LaunchAgent 标签";
+"settings.field.allowedhost" = "允许的主机（--allowed-host）";
+"settings.field.apikey" = "API 密钥（--api-key）";
 "settings.field.compatible" = "✓ 兼容 Splash %1$@";
 "settings.field.custom" = "自定义模型 ID（--model）";
 "settings.field.context" = "上下文大小（--max-context）";

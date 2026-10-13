@@ -30,6 +30,7 @@ seven languages (de, en, fr, es, ja, zh, ru).
 - Opens the chat UI at `http://127.0.0.1:8080` and the server log
 - Selects the model ID passed to `splash serve --model`
 - Chooses the context size passed to `splash serve --max-context` (auto = the model's native window)
+- Optionally passes an API key and an allowed host to the server
 - Shows the Splash version in use and can switch between the globally installed
   Splash and published stable GitHub releases; release versions are downloaded
   to `~/.splashbar/splash-versions` and used by SplashBar only, without touching
@@ -75,6 +76,8 @@ without rebuilding the app.
 | Idle memory threshold | 3 GB |
 | Splash model ID | Read from the LaunchAgent; empty until configured |
 | Context size (--max-context) | Auto — the argument is left out |
+| API key (--api-key) | None — the argument is left out |
+| Allowed host (--allowed-host) | None — the argument is left out |
 | Additional model search folder | None |
 
 The server URL is shared by the chat shortcut and the `/v1/models` health
@@ -91,6 +94,10 @@ action starts it.
 The context size caps the window available per conversation; `Auto` lets
 Splash keep the model's native window when memory allows and is not written
 to the LaunchAgent at all.
+
+The API key and the allowed host are optional. When set, they are written to
+the Splash LaunchAgent as `--api-key` and `--allowed-host`; when empty, the
+argument is left out entirely.
 
 The model list scans the Hugging Face cache used by Splash (`HF_HUB_CACHE`,
 `HF_HOME/hub`, or `~/.cache/huggingface/hub`) and LM Studio's
