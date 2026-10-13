@@ -115,3 +115,10 @@
 "version.error.unexpectedlayout" = "发布存档的结构不符合预期。";
 "version.error.releasegone" = "所选版本在 GitHub 版本列表中不可用。";
 "version.error.stopstuck" = "无法可靠停止正在运行的 Splash 服务器。版本未切换。%1$@";
+"version.cancel" = "取消";
+"version.cancelconfirm.title" = "取消下载 Splash %1$@？";
+"version.cancelconfirm.detail" = "将中止下载 Splash %1$@。已创建的文件和目录 ~/.splashbar/splash-versions/%1$@ 将被删除。之前启用的 Splash 版本保持选中。";
+"version.cancelconfirm.confirm" = "取消下载";
+"version.cancelconfirm.keep" = "继续下载";
+"version.cancelling" = "正在中止下载并删除目录 …";
+"version.cancelled" = "已中止下载 Splash %1$@。已删除创建的文件和目录 ~/.splashbar/splash-versions/%1$@。之前启用的 Splash 版本保持选中。";

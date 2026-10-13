@@ -115,3 +115,10 @@
 "version.error.unexpectedlayout" = "Архив релиза имеет неожиданный состав.";
 "version.error.releasegone" = "Выбранный релиз больше не доступен в списке релизов GitHub.";
 "version.error.stopstuck" = "Не удалось надёжно остановить работающий сервер Splash. Версия не была переключена. %1$@";
+"version.cancel" = "Отмена";
+"version.cancelconfirm.title" = "Отменить загрузку Splash %1$@?";
+"version.cancelconfirm.detail" = "Загрузка Splash %1$@ будет прервана. Созданные файлы и каталог ~/.splashbar/splash-versions/%1$@ будут удалены. Ранее активная версия Splash остаётся выбранной.";
+"version.cancelconfirm.confirm" = "Отменить загрузку";
+"version.cancelconfirm.keep" = "Продолжить загрузку";
+"version.cancelling" = "Прерывание загрузки и удаление каталога …";
+"version.cancelled" = "Загрузка Splash %1$@ прервана. Созданные файлы и каталог ~/.splashbar/splash-versions/%1$@ удалены. Ранее активная версия Splash остаётся выбранной.";

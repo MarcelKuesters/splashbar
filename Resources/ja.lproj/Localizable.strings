@@ -115,3 +115,10 @@
 "version.error.unexpectedlayout" = "リリースアーカイブの構成が想定外です。";
 "version.error.releasegone" = "選択したReleaseはGitHubのリリースリストに存在しません。";
 "version.error.stopstuck" = "実行中のSplashサーバーを確実に停止できませんでした。バージョンは切り替わりませんでした。%1$@";
+"version.cancel" = "キャンセル";
+"version.cancelconfirm.title" = "Splash %1$@ のダウンロードをキャンセルしますか？";
+"version.cancelconfirm.detail" = "Splash %1$@ のダウンロードを中止します。これまでに作成されたファイルとフォルダ ~/.splashbar/splash-versions/%1$@ が削除されます。これまで有効だった Splash バージョンは選択されたままです。";
+"version.cancelconfirm.confirm" = "ダウンロードをキャンセル";
+"version.cancelconfirm.keep" = "ダウンロードを続行";
+"version.cancelling" = "ダウンロードを中止してフォルダを削除中 …";
+"version.cancelled" = "Splash %1$@ のダウンロードを中止しました。作成されたファイルとフォルダ ~/.splashbar/splash-versions/%1$@ を削除しました。これまで有効だった Splash バージョンは選択されたままです。";

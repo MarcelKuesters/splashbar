@@ -353,7 +353,15 @@ func availableModelChoices(additionalPath: String, splashVersion: String, preser
     return (compatible, other)
 }
 
-func runCommand(_ executable: String, _ arguments: [String]) -> CommandResult {
+/// Runs `executable` with `arguments` and captures its combined output.
+/// `isCancelled` is polled while the process runs; once it returns true the
+/// process is terminated (SIGTERM, then SIGKILL if it lingers) and the
+/// result carries the process's termination status.
+func runCommand(
+    _ executable: String,
+    _ arguments: [String],
+    isCancelled: @escaping () -> Bool = { false }
+) -> CommandResult {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = arguments
@@ -370,6 +378,22 @@ func runCommand(_ executable: String, _ arguments: [String]) -> CommandResult {
 
     do {
         try process.run()
+        while process.isRunning {
+            if isCancelled() {
+                process.terminate()
+                let deadline = Date().addingTimeInterval(5)
+                while process.isRunning, Date() < deadline {
+                    Thread.sleep(forTimeInterval: 0.1)
+                }
+                if process.isRunning {
+                    kill(process.processIdentifier, SIGKILL)
+                }
+                process.waitUntilExit()
+            }
+            if process.isRunning {
+                Thread.sleep(forTimeInterval: 0.25)
+            }
+        }
         process.waitUntilExit()
         try outputFile.close()
         let output = (try? String(contentsOf: outputURL, encoding: .utf8)) ?? ""
@@ -655,7 +679,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var versionProgressBar: NSProgressIndicator?
     private let versionDownloadLock = NSLock()
     private var versionDownloadActive = false
+    private var versionDownloadCancelled = false
+    private var versionDownloadVersionText = ""
     var versionLogButton: NSButton?
+    var versionCancelButton: NSButton?
     var versionCloseButton: NSButton?
     var versionProgressLogURL: URL?
     var activeModalAlertWindow: NSWindow?
@@ -1407,6 +1434,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
             }
 
+            // A confirmed download cancel aborts the whole version change:
+            // the previously active version stays selected, and the partially
+            // created version directory was already removed.
+            if errorText != nil, self.isVersionDownloadCancelled() {
+                versionChangeDiagnostics.record("Download cancelled by the user; the version directory was removed.")
+                versionChangeDiagnostics.end()
+                DispatchQueue.main.async {
+                    self.finishVersionChange()
+                    self.completeVersionProgress(message: tr("version.cancelled", version), error: nil, logURL: nil)
+                }
+                return
+            }
+
             // 2. Resolve the executable the selection points at.
             let executablePath = selectedSplashExecutablePath(selectedVersion: version)
             if errorText == nil, executablePath == nil {
@@ -1539,6 +1579,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         spinner.startAnimation(nil)
         content.addSubview(spinner)
 
+        let cancelButton = NSButton(title: tr("version.cancel"), target: self, action: #selector(cancelVersionDownload))
+        cancelButton.frame = NSRect(x: 24, y: 18, width: 82, height: 28)
+        cancelButton.bezelStyle = .rounded
+        cancelButton.isHidden = true
+        content.addSubview(cancelButton)
+
         let logButton = NSButton(title: tr("version.progresslog"), target: self, action: #selector(openVersionChangeLog))
         logButton.frame = NSRect(x: 268, y: 18, width: 150, height: 28)
         logButton.isHidden = true
@@ -1556,6 +1602,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         versionProgressBar = bar
         versionProgressSpinner = spinner
         versionLogButton = logButton
+        versionCancelButton = cancelButton
         versionCloseButton = closeButton
         window.center()
         NSApp.activate(ignoringOtherApps: true)
@@ -1567,6 +1614,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         versionProgressSpinner?.isHidden = true
         versionProgressBar?.stopAnimation(nil)
         versionProgressBar?.isHidden = true
+        versionCancelButton?.isHidden = true
         versionProgressText?.stringValue = error.map { briefError in
             tr("version.error.text", briefError, logURL?.path ?? tr("version.error.donelog"))
         } ?? (message ?? tr("version.progressdone"))
@@ -1591,8 +1639,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         versionProgressBar = nil
         versionProgressSpinner = nil
         versionLogButton = nil
+        versionCancelButton = nil
         versionCloseButton = nil
         versionProgressLogURL = nil
+    }
+
+    /// The progress window's cancel button, shown while a release download
+    /// is running. The user must confirm the cancellation first; only then
+    /// is the download killed and the partially created version directory
+    /// deleted.
+    @objc func cancelVersionDownload() {
+        // Only an in-flight download can be cancelled; if it has finished in
+        // the meantime the claim below fails and nothing happens.
+        guard isVersionDownloadActive() else { return }
+
+        let version = versionDownloadVersion()
+        let alert = NSAlert()
+        alert.messageText = tr("version.cancelconfirm.title", version)
+        alert.informativeText = tr("version.cancelconfirm.detail", version)
+        alert.addButton(withTitle: tr("version.cancelconfirm.confirm"))
+        alert.addButton(withTitle: tr("version.cancelconfirm.keep"))
+        // Closing the dialog keeps the download running (least committal).
+        guard runClosableAlert(alert) == .alertFirstButtonReturn else { return }
+
+        guard claimVersionDownloadCancellation() else {
+            return  // The download finished while the user was deciding.
+        }
+        // Immediate feedback while the background thread terminates curl and
+        // removes the version directory.
+        showVersionPhase(tr("version.cancelling", version), spinner: true)
     }
 
     /// Updates the progress window text and shows the spinner (indeterminate
@@ -1601,12 +1676,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         versionProgressText?.stringValue = text
         versionProgressSpinner?.isHidden = !spinner
         versionProgressBar?.isHidden = spinner
+        versionCancelButton?.isHidden = true
     }
 
     /// Updates the download progress bar. Must be called on the main thread.
     func showVersionDownloadProgress(_ version: String, downloaded: Int, total: Int) {
+        // A queued update from before a confirmed cancel must not unhide the
+        // bar or the cancel button again.
+        guard !isVersionDownloadCancelled() else { return }
         versionProgressSpinner?.isHidden = true
         versionProgressBar?.isHidden = false
+        versionCancelButton?.isHidden = false
         if total > 0 {
             versionProgressBar?.isIndeterminate = false
             versionProgressBar?.minValue = 0
@@ -1620,17 +1700,50 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    /// Sets whether the download progress poller runs.
+    /// Sets whether the download progress poller runs. Starting a download
+    /// also clears the cancellation flag of any earlier run.
     func setVersionDownloadActive(_ active: Bool) {
         versionDownloadLock.lock()
+        defer { versionDownloadLock.unlock() }
         versionDownloadActive = active
-        versionDownloadLock.unlock()
+        if active { versionDownloadCancelled = false }
     }
 
     func isVersionDownloadActive() -> Bool {
         versionDownloadLock.lock()
         defer { versionDownloadLock.unlock() }
         return versionDownloadActive
+    }
+
+    func isVersionDownloadCancelled() -> Bool {
+        versionDownloadLock.lock()
+        defer { versionDownloadLock.unlock() }
+        return versionDownloadCancelled
+    }
+
+    /// The version whose download is in flight, for the cancel dialog.
+    func versionDownloadVersion() -> String {
+        versionDownloadLock.lock()
+        defer { versionDownloadLock.unlock() }
+        return versionDownloadVersionText
+    }
+
+    func setVersionDownloadVersion(_ version: String) {
+        versionDownloadLock.lock()
+        versionDownloadVersionText = version
+        versionDownloadLock.unlock()
+    }
+
+    /// Atomically claims the right to cancel: succeeds only while the
+    /// download is still running. The poller then stops and the download
+    /// loop sees the cancellation and cleans up.
+    func claimVersionDownloadCancellation() -> Bool {
+        versionDownloadLock.lock()
+        defer { versionDownloadLock.unlock() }
+        guard versionDownloadActive else { return false }
+        versionDownloadActive = false
+        versionDownloadCancelled = true
+        return true
     }
 
     /// Downloads, verifies and extracts a release into
@@ -1657,6 +1770,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // 1. Download, with a progress bar driven by a polling thread.
         setVersionDownloadActive(true)
+        setVersionDownloadVersion(version)
         let poller = Thread { [weak self] in
             while let self, self.isVersionDownloadActive() {
                 let downloaded = (try? fileManager.attributesOfItem(atPath: archiveURL.path)[.size] as? Int) ?? 0
@@ -1670,13 +1784,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         poller.start()
 
-        let download = runCommand("/usr/bin/curl", [
-            "--fail", "--silent", "--show-error", "--location",
-            "--output", archiveURL.path,
-            release.archiveURL
-        ])
+        let download = runCommand(
+            "/usr/bin/curl",
+            ["--fail", "--silent", "--show-error", "--location",
+             "--output", archiveURL.path,
+             release.archiveURL],
+            isCancelled: { [weak self] in self?.isVersionDownloadCancelled() ?? false }
+        )
         setVersionDownloadActive(false)
         guard download.status == 0 else {
+            if isVersionDownloadCancelled() {
+                // Confirmed cancel: remove the version directory and any
+                // staging leftovers, then report the cancellation.
+                removeCancelledVersionArtifacts(forVersion: version)
+                return tr("version.cancelled", version)
+            }
             return tr("version.error.download", version, download.output)
         }
 
@@ -1740,6 +1862,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return tr("version.error.extract", version, error.localizedDescription)
         }
         return nil
+    }
+
+    /// Removes the artifacts of a cancelled version download: the version
+    /// directory `~/.splashbar/splash-versions/<version>` and any staging
+    /// directories left behind for that version. The in-flight archive file
+    /// is removed by the `defer` in `ensureLocalVersion`.
+    func removeCancelledVersionArtifacts(forVersion version: String) {
+        let fileManager = FileManager.default
+        let versionsRoot = splashVersionsDirectory()
+        try? fileManager.removeItem(
+            at: versionsRoot.appendingPathComponent(version, isDirectory: true)
+        )
+        if let entries = try? fileManager.contentsOfDirectory(atPath: versionsRoot.path) {
+            for entry in entries where entry.hasPrefix(".\(version)-staging-") {
+                try? fileManager.removeItem(at: versionsRoot.appendingPathComponent(entry))
+            }
+        }
     }
 
     /// Rewrites the first entry of the LaunchAgent's ProgramArguments to the

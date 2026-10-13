@@ -119,9 +119,13 @@ internally only; nothing else on your system, including your PATH, is
 modified. SplashBar asks before the switch and restarts a loaded server
 afterward; a stopped server remains stopped. Check model compatibility before
 switching; Splash 1.3.1, for example, no longer loads the older `*-Splash`
-packages. After confirming a version change, SplashBar shows a progress window.
-If the operation fails, the window points to a detailed log with command output
-and the application stack trace in `~/Library/Logs/SplashBar/`.
+packages. After confirming a version change, SplashBar shows a progress window. While
+the archive is being downloaded the window offers a **Cancel** button;
+confirming the cancellation aborts the download, deletes the partially
+created `~/.splashbar/splash-versions/<version>` directory, and keeps the
+previously active Splash version selected. If the operation fails, the window
+points to a detailed log with command output and the application stack trace
+in `~/Library/Logs/SplashBar/`.
 
 ## Uninstall
 
