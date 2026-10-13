@@ -22,12 +22,13 @@
 "model.pick.title" = "Elegir carpeta de modelos";
 "model.placeholder" = "No se encontraron modelos";
 "model.restart" = "¿Aplicar los cambios a Splash?";
-"model.restart.detail" = "El servidor en ejecución se reiniciará para aplicar el nuevo modelo y/o el nuevo tamaño de contexto. Si el modelo aún no existe, Splash puede descargarlo, utilizando mucho espacio en disco y memoria.";
+"model.restart.detail" = "Puedes reiniciar el servidor en ejecución ahora para aplicar el nuevo modelo y/o el nuevo tamaño de contexto, o guardar los cambios para aplicarlos la próxima vez que el servidor se inicie. Si el modelo aún no existe, Splash puede descargarlo, utilizando mucho espacio en disco y memoria.";
 "model.restart.switch" = "Aplicar y reiniciar";
 "model.source.additional" = "Carpeta adicional";
 "model.source.selected" = "Seleccionado actualmente";
 "model.source.suggested" = "Sugerencia de Splash";
 "model.versionunknown" = "Versión desconocida";
+"settings.applylater" = "Guardar, aplicar después";
 "settings.browse" = "Examinar …";
 "settings.cancel" = "Cancelar";
 "settings.close" = "Cerrar";

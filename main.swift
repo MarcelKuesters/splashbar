@@ -658,6 +658,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var versionCloseButton: NSButton?
     var versionProgressLogURL: URL?
     var activeModalAlertWindow: NSWindow?
+    var activeModalCloseResponse: NSApplication.ModalResponse = .alertSecondButtonReturn
     var additionalModelsPathField: NSTextField?
     var compatibleModelsField: NSComboBox?
     var otherModelsField: NSComboBox?
@@ -990,13 +991,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             let oldTarget = "gui/\(uid)/\(settings.launchdLabel)"
             let serviceLoaded = !sh("launchctl print \(shellQuote(oldTarget)) >/dev/null 2>&1 && echo yes").isEmpty
+            // A loaded service is restarted by default so the new LaunchAgent
+            // arguments take effect immediately; "save and apply later" keeps
+            // the instance running and defers them to the next start.
+            var restartLoadedService = serviceLoaded
             if serviceLoaded {
                 let restartAlert = NSAlert()
                 restartAlert.messageText = tr("model.restart")
                 restartAlert.informativeText = tr("model.restart.detail")
                 restartAlert.addButton(withTitle: tr("model.restart.switch"))
+                restartAlert.addButton(withTitle: tr("settings.applylater"))
                 restartAlert.addButton(withTitle: tr("settings.cancel"))
-                guard runClosableAlert(restartAlert) == .alertFirstButtonReturn else { return }
+                // The window's close button aborts the save like Cancel,
+                // never like the middle "apply later" button.
+                let response = runClosableAlert(restartAlert, closeAs: .alertThirdButtonReturn)
+                if response == .alertSecondButtonReturn {
+                    restartLoadedService = false
+                } else if response != .alertFirstButtonReturn {
+                    return
+                }
             }
 
             if let error = applyServeArguments(
@@ -1004,7 +1017,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 context: requestedContext,
                 settings: updated,
                 previousSettings: settings,
-                restartLoadedService: serviceLoaded
+                restartLoadedService: restartLoadedService
             ) {
                 showSettingsError(error)
                 return
@@ -1177,7 +1190,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         _ = runClosableAlert(error)
     }
 
-    func runClosableAlert(_ alert: NSAlert) -> NSApplication.ModalResponse {
+    /// `closeAs` is the response the window's close button produces when the
+    /// modal session ends. Two-button alerts map it to their second (cancel)
+    /// button, which is the least committal one; three-button alerts must be
+    /// told explicitly, since their second button is an actual action.
+    func runClosableAlert(
+        _ alert: NSAlert,
+        closeAs closeResponse: NSApplication.ModalResponse = .alertSecondButtonReturn
+    ) -> NSApplication.ModalResponse {
         let window = alert.window
         window.styleMask.insert(.closable)
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
@@ -1189,6 +1209,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             closeButton.action = #selector(closeModalAlert(_:))
         }
         activeModalAlertWindow = window
+        activeModalCloseResponse = closeResponse
         let response = alert.runModal()
         activeModalAlertWindow = nil
         return response
@@ -1196,7 +1217,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func closeModalAlert(_ sender: NSButton) {
         let window = sender.window ?? activeModalAlertWindow
-        NSApp.stopModal(withCode: .alertSecondButtonReturn)
+        NSApp.stopModal(withCode: activeModalCloseResponse)
         window?.orderOut(nil)
     }
 
@@ -1757,7 +1778,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return result.output.split(separator: " ").first.map { $0.lowercased() }
     }
 
-    @objc func quit() { NSApp.terminate(nil) }
+    @objc func quit() {
+        NSApp.terminate(nil) 
+    }
 }
 
 let app = NSApplication.shared

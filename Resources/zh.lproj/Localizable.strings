@@ -22,12 +22,13 @@
 "model.pick.title" = "选择模型文件夹";
 "model.placeholder" = "未找到模型";
 "model.restart" = "要应用对Splash的更改吗？";
-"model.restart.detail" = "正在运行的服务器将被重启，以应用新的模型和/或上下文大小。如果模型尚不存在，Splash 可能会下载它，占用大量磁盘空间和内存。";
+"model.restart.detail" = "您可以立即重启正在运行的服务器，以应用新的模型和/或上下文大小，或者保存更改，在服务器下次启动时再应用。如果模型尚不存在，Splash 可能会下载它，占用大量磁盘空间和内存。";
 "model.restart.switch" = "应用并重启";
 "model.source.additional" = "附加文件夹";
 "model.source.selected" = "当前选中";
 "model.source.suggested" = "Splash 建议";
 "model.versionunknown" = "版本未知";
+"settings.applylater" = "保存（稍后应用）";
 "settings.browse" = "浏览…";
 "settings.cancel" = "取消";
 "settings.close" = "关闭";

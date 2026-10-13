@@ -22,12 +22,13 @@
 "model.pick.title" = "Choose model folder";
 "model.placeholder" = "No models found";
 "model.restart" = "Apply the changes to Splash?";
-"model.restart.detail" = "The running server will be restarted to apply the new model and/or context size. If the model does not exist yet, Splash may download it, using a lot of disk space and memory.";
+"model.restart.detail" = "You can restart the running server now to apply the new model and/or context size, or save the changes to apply them the next time the server starts. If the model does not exist yet, Splash may download it, using a lot of disk space and memory.";
 "model.restart.switch" = "Apply and restart";
 "model.source.additional" = "Additional folder";
 "model.source.selected" = "Currently selected";
 "model.source.suggested" = "Splash suggestion";
 "model.versionunknown" = "Unknown version";
+"settings.applylater" = "Save, apply later";
 "settings.browse" = "Browse …";
 "settings.cancel" = "Cancel";
 "settings.close" = "Close";

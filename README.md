@@ -82,8 +82,10 @@ check. Paths may start with `~` to refer to your home directory. Choose a
 suggested model or enter a custom repository ID such as
 `mlx-community/Qwen3.8-27B-4bit` in the editable model field.
 Saving a new model or a different context size updates the configured Splash
-LaunchAgent. If the server is already loaded, SplashBar asks before restarting
-it; if it is stopped, the LaunchAgent is prepared and the next **Starten**
+LaunchAgent. If the server is already loaded, SplashBar asks: restart it to
+apply the changes immediately, or save the changes and apply them the next
+time the server starts, without interrupting the running instance. If the
+server is stopped, the LaunchAgent is prepared and the next **Starten**
 action starts it.
 
 The context size caps the window available per conversation; `Auto` lets
