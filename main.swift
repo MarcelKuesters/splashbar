@@ -648,6 +648,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var versionItem: NSMenuItem!
     var timer: Timer?
     var isUpdatingSplash = false
+    var isQuitting = false
     var versionProgressWindow: NSWindow?
     var versionProgressText: NSTextField?
     var versionProgressSpinner: NSProgressIndicator?
@@ -724,6 +725,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) { refresh() }
 
     func refresh() {
+        // While quitting, the dot stays orange ("killing the instance") no
+        // matter what the state probe reports until the app is gone.
+        guard !isQuitting else { return }
         let currentSettings = settings
         let serviceTarget = target
         DispatchQueue.global(qos: .utility).async {
@@ -770,6 +774,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return s.count <= 34 ? s : String(s.prefix(33)) + "…"
     }
 
+    /// The colored dot appended to the menu-bar icon.
+    func setDot(_ color: NSColor) {
+        item.button?.attributedTitle = NSAttributedString(
+            string: " ●",
+            attributes: [.foregroundColor: color, .font: NSFont.systemFont(ofSize: 9)]
+        )
+    }
+
     func apply(_ state: ServerState, _ memoryGB: Double, _ model: String = "") {
         let color: NSColor
         switch state {
@@ -792,10 +804,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         modelLine.title = model.isEmpty
             ? tr("status.modelnone")
             : tr("status.model", model)
-        item.button?.attributedTitle = NSAttributedString(string: " ●", attributes: [
-            .foregroundColor: color,
-            .font: NSFont.systemFont(ofSize: 9)
-        ])
+        setDot(color)
         startItem.isEnabled = state == .stopped && !isUpdatingSplash
         stopItem.isEnabled = state != .stopped && !isUpdatingSplash
         restartItem.isEnabled = state != .stopped && !isUpdatingSplash
@@ -1336,12 +1345,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// The PID of the service's process, or nil when the service is not
+    /// running — including when it is loaded but idle (a loaded agent with
+    /// no process shows no usable `pid` line, or `pid = 0`).
     func servicePID(_ serviceTarget: String) -> String? {
         let result = runCommand("/bin/launchctl", ["print", serviceTarget])
         guard result.status == 0 else { return nil }
         for line in result.output.split(separator: "\n") {
             let parts = line.split(separator: "=").map { $0.trimmingCharacters(in: .whitespaces) }
-            if parts.count == 2, parts[0] == "pid", Int(parts[1]) != nil {
+            if parts.count == 2, parts[0] == "pid", let pid = Int(parts[1]), pid > 0 {
                 return String(parts[1])
             }
         }
@@ -1427,9 +1439,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if currentAgentPath?.first != executablePath {
                 agentChanged = true
                 if wasLoaded {
-                    let stopped = runCommand("/bin/launchctl", ["kill", "SIGTERM", serviceTarget])
-                    if stopped.status != 0 || !self.waitForServiceToStop(serviceTarget) {
-                        errorText = tr("version.error.stopstuck", stopped.output)
+                    // A loaded agent may have no running process (for example
+                    // after Stop); `launchctl kill` would then fail and abort
+                    // the whole switch, so only signal an actually running one.
+                    if self.servicePID(serviceTarget) != nil {
+                        let stopped = runCommand("/bin/launchctl", ["kill", "SIGTERM", serviceTarget])
+                        if stopped.status != 0 || !self.waitForServiceToStop(serviceTarget) {
+                            errorText = tr("version.error.stopstuck", stopped.output)
+                        }
+                    } else {
+                        versionChangeDiagnostics.record("Service has no running process; skipping the kill step.")
                     }
                     if errorText == nil {
                         let unloaded = runCommand("/bin/launchctl", ["bootout", serviceTarget])
@@ -1778,8 +1797,38 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return result.output.split(separator: " ").first.map { $0.lowercased() }
     }
 
+    /// Kills the running splash instance before the app exits so its model
+    /// memory is released. Without a running instance the app simply closes.
+    /// The dot turns orange while the SIGTERM is delivered, and the app exits
+    /// afterwards whether or not the process actually stopped in time — a
+    /// failed kill (for example the process died in the meantime) must not
+    /// keep the app alive.
     @objc func quit() {
-        NSApp.terminate(nil) 
+        isQuitting = true
+        startItem.isEnabled = false
+        stopItem.isEnabled = false
+        restartItem.isEnabled = false
+        versionItem.isEnabled = false
+
+        let serviceTarget = target
+        DispatchQueue.global(qos: .userInitiated).async {
+            // A loaded agent without a process (for example after Stop) has
+            // nothing to kill; `launchctl kill` would just fail for it.
+            if self.servicePID(serviceTarget) != nil {
+                DispatchQueue.main.async {
+                    self.setDot(.systemOrange)
+                }
+                let stopped = runCommand("/bin/launchctl", ["kill", "SIGTERM", serviceTarget])
+                if stopped.status == 0 {
+                    _ = self.waitForServiceToStop(serviceTarget)
+                }
+            }
+            // Exit anyway, even when the SIGTERM failed or the instance is
+            // still alive after the timeout.
+            DispatchQueue.main.async {
+                NSApp.terminate(nil)
+            }
+        }
     }
 }
 
