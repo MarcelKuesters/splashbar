@@ -2,6 +2,7 @@
 // Development language: German. A missing key shows up verbatim in the UI
 // on purpose, so gaps stay visible during development.
 
+"context.auto" = "Automatisch";
 "menu.chat" = "Chat im Browser öffnen";
 "menu.log" = "Protokoll anzeigen";
 "menu.quit" = "SplashBar beenden";
@@ -20,9 +21,9 @@
 "model.pick.prompt" = "Auswählen";
 "model.pick.title" = "Modellordner auswählen";
 "model.placeholder" = "Keine Modelle gefunden";
-"model.restart" = "Splash-Modell wechseln?";
-"model.restart.detail" = "Der laufende Server wird neu gestartet. Falls das Modell noch nicht vorhanden ist, kann Splash es herunterladen und dabei viel Speicherplatz und Arbeitsspeicher verwenden.";
-"model.restart.switch" = "Wechseln und neu starten";
+"model.restart" = "Änderungen an Splash anwenden?";
+"model.restart.detail" = "Der laufende Server wird neu gestartet, um das neue Modell und/oder die neue Kontextgröße zu übernehmen. Falls das Modell noch nicht vorhanden ist, kann Splash es herunterladen und dabei viel Speicherplatz und Arbeitsspeicher verwenden.";
+"model.restart.switch" = "Anwenden und neu starten";
 "model.source.additional" = "Zusätzlicher Ordner";
 "model.source.selected" = "Aktuell ausgewählt";
 "model.source.suggested" = "Splash-Vorschlag";
@@ -30,13 +31,14 @@
 "settings.browse" = "Durchsuchen …";
 "settings.cancel" = "Abbrechen";
 "settings.close" = "Schließen";
-"settings.error.agent" = "Die Modellverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt.";
+"settings.error.agent" = "Die Modell- und Kontextverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt.";
 "settings.error.brew" = "Homebrew wurde nicht gefunden. Bitte installiere Splash zuerst mit Homebrew.";
 "settings.error.releases" = "Die veröffentlichten Splash-Versionen konnten nicht von GitHub geladen werden. Prüfe die Internetverbindung und versuche es erneut.";
 "settings.field.addpath" = "Zusätzlicher Modellpfad";
 "settings.field.agent" = "LaunchAgent-Label";
 "settings.field.compatible" = "✓ Passend für Splash %1$@";
 "settings.field.custom" = "Eigene Modell-ID (--model)";
+"settings.field.context" = "Kontextgröße (--max-context)";
 "settings.field.idle" = "Idle-Grenze (GB)";
 "settings.field.log" = "Protokollpfad";
 "settings.field.other" = "✕ Unpassend / ungeprüft";
@@ -63,10 +65,11 @@
 "status.stopped" = "Splash ist gestoppt";
 "status.version" = "Splash: %1$@";
 "status.versionchecking" = "Splash-Version wird geprüft …";
-"validate.agenturl" = "Die Modellverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt.";
+"validate.agenturl" = "Die Modell- und Kontextverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt.";
 "validate.badplist" = "Die angegebene LaunchAgent-Plist startet keinen Splash-Server und wurde nicht geändert.";
 "validate.labelfirst" = "Bitte den LaunchAgent-Pfad getrennt ändern, bevor das Modell gewechselt wird.";
 "validate.labeltaken" = "Der neue LaunchAgent-Label ist bereits geladen. Bitte wähle einen anderen Label.";
+"validate.modelrequired" = "Ohne Modell kann der Splash-Server nicht starten. Bitte zuerst ein Modell auswählen.";
 "validate.noagent" = "Splash wurde nicht gefunden. Bitte installiere Splash zuerst mit Homebrew.";
 "validate.plist" = "Die LaunchAgent-Plist ist ungültig und wurde nicht geändert.";
 "validate.savfailed" = "LaunchAgent-Konfiguration konnte nicht gespeichert werden: %1$@";
