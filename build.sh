@@ -9,6 +9,7 @@ swiftc -O -swift-version 5 -o "$APP/Contents/MacOS/SplashBar" "$SRC/main.swift" 
 # Localized resources: Resources/<code>.lproj/Localizable.strings
 rm -rf "$APP/Contents/Resources/"*.lproj
 cp -R "$SRC/Resources/"*.lproj "$APP/Contents/Resources/"
+cp "$SRC/Resources/AppIcon.icns" "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -16,6 +17,7 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
  <key>CFBundleIdentifier</key><string>local.splashbar</string>
  <key>CFBundleName</key><string>SplashBar</string>
  <key>CFBundleExecutable</key><string>SplashBar</string>
+ <key>CFBundleIconFile</key><string>AppIcon</string>
  <key>CFBundlePackageType</key><string>APPL</string>
  <key>CFBundleShortVersionString</key><string>1.0</string>
  <key>CFBundleDevelopmentRegion</key><string>de</string>
