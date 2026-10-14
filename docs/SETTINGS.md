@@ -15,7 +15,7 @@ setting belongs to exactly one of them:
     Splash server on 127.0.0.1:8080
 ```
 
-There are 14 settings in four groups.
+There are 15 settings in five groups, plus the version selector.
 
 ## 1. Connection — "where is the server?"
 
@@ -48,6 +48,21 @@ LaunchAgent's executable path directly — it never needs a "Save".
 | **✕ Unsupported / untested** | — | Models found on disk (Downloads folder, Hugging Face cache, extra path) that are not in the support list. Selectable, with a warning |
 | **Custom model ID** | empty = auto | Free field for anything else (e.g. a Hugging Face ID) → written as `--model` into the plist. Empty lets Splash pick its default |
 | **Context size** | Automatic | Sets `--max-context` (16K–256K). **Automatic** omits the flag entirely → Splash sizes its KV cache from the free RAM at startup (this is why you can see e.g. 180K on a 36 GB machine). A pinned value gives predictable, reproducible RAM usage |
+| **Model cache directory** | `~/.cache/huggingface/hub` | Where Splash reads the model weights from — the Hugging Face hub cache. Written as the `HF_HUB_CACHE` environment variable into the plist, so all future downloads (and existing weights) resolve there. Point it at a visible home folder to see the model files; an empty field falls back to the standard location. The directory is created automatically |
+
+### Where the model actually lives
+
+Three layers, and only the first one is the real data:
+
+```
+~/.cache/huggingface/hub/models--<org>--<model>/…      ← the weights (GBs)
+~/Library/Application Support/Splash/models/.resolved/  ← symlinks into the cache
+~/Library/Application Support/Splash/models/<org>/<m>  ← a symlink to .resolved
+```
+
+Deleting the Application Support tree is harmless (it is rebuilt from the
+cache on the next start); deleting the hub cache breaks the model until it is
+downloaded again. See **Backups** below for the offline way back.
 
 ## 4. Access — "who may talk to the server?"
 
@@ -73,7 +88,8 @@ Save → validate everything → ① app settings into UserDefaults
                                     (defaults read local.splashbar)
                            → ② rewrite the LaunchAgent plist
                               (--model, --max-context, --api-key,
-                               --allowed-host, log path, label)
+                               --allowed-host, log path, label,
+                               EnvironmentVariables: HF_HUB_CACHE)
                            → ③ "Apply and restart?"
                                → "save, apply later" defers the restart;
                                "apply" = stop + bootout + bootstrap
@@ -82,16 +98,37 @@ Save → validate everything → ① app settings into UserDefaults
 - **Active immediately** (app-only, no server restart needed): server URL,
   timeout, refresh interval, idle threshold
 - **Active on next start** (because of ③): model, context size, API key,
-  allowed host, plist paths, label
+  allowed host, model cache directory, plist paths, label
 
 ## Where settings are stored
 
 - **App preferences** (URL, timeout, refresh, idle, model, context, API key,
-  allowed host, selected version, paths): macOS UserDefaults, domain
-  `local.splashbar` — inspect with `defaults read local.splashbar`
+  allowed host, model cache directory, selected version, paths): macOS
+  UserDefaults, domain `local.splashbar` — inspect with
+  `defaults read local.splashbar`
 - **Server launch configuration**: the LaunchAgent plist from group 2 — the
   source of truth for how `splash serve` is started. Editing the plist by hand
   works, but the next "Save" in the app overwrites it from the stored settings.
+- **Model backups**: `~/SplashBar-Backups/models-<timestamp>.tar` — created
+  by the "Back up model…" menu entry (see below)
+
+## Model backups (emergency fallback)
+
+The menu entries **Back up model…** and **Restore model…** guard against the
+one scenario nothing else covers: the model cache getting deleted or
+corrupted, so the only way back would be a multi-GB re-download.
+
+- **Back up model…** tars the whole model cache (group 3's *Model cache
+  directory*) into `~/SplashBar-Backups/models-<timestamp>.tar` with a
+  progress bar and cancel. The cache itself stays untouched; the backup is a
+  second copy.
+- **Restore model…** lists the existing archives, lets you pick one, and
+  restores it *transactionally*: the current cache is moved aside first, the
+  archive is extracted, and if that fails the old cache is moved back. A
+  failed or cancelled restore never leaves a half-restore behind.
+
+A Time Machine or other disk backup of `~/` covers the same scenario
+automatically — these entries are the fast, in-app version of that.
 
 ## Notes
 
