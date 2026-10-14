@@ -17,3 +17,6 @@ GITHUB-LEARNING.md
 
 # Local config (if a config-file mode lands)
 splashbar.toml
+
+# Local tasks.md file
+tasks.md

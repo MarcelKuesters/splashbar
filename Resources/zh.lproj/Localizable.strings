@@ -22,20 +22,22 @@
 "model.pick.title" = "选择模型文件夹";
 "model.placeholder" = "未找到模型";
 "model.restart" = "要应用对Splash的更改吗？";
-"model.restart.detail" = "正在运行的服务器将被重启，以应用新的模型和/或上下文大小。如果模型尚不存在，Splash 可能会下载它，占用大量磁盘空间和内存。";
+"model.restart.detail" = "您可以立即重启正在运行的服务器，以应用新的模型、上下文大小、API 密钥和/或允许的主机，或者保存更改，在服务器下次启动时再应用。如果模型尚不存在，Splash 可能会下载它，占用大量磁盘空间和内存。";
 "model.restart.switch" = "应用并重启";
 "model.source.additional" = "附加文件夹";
 "model.source.selected" = "当前选中";
 "model.source.suggested" = "Splash 建议";
 "model.versionunknown" = "版本未知";
+"settings.applylater" = "保存（稍后应用）";
 "settings.browse" = "浏览…";
 "settings.cancel" = "取消";
 "settings.close" = "关闭";
 "settings.error.agent" = "通过本地 LaunchAgent 管理模型和上下文仅在服务器 URL 指向 localhost 或 127.0.0.1 时可用。";
-"settings.error.brew" = "未找到 Homebrew。请先用 Homebrew 安装 Splash。";
 "settings.error.releases" = "无法从 GitHub 加载已发布的 Splash 版本。请检查网络连接并重试。";
 "settings.field.addpath" = "附加模型路径";
 "settings.field.agent" = "LaunchAgent 标签";
+"settings.field.allowedhost" = "允许的主机（--allowed-host）";
+"settings.field.apikey" = "API 密钥（--api-key）";
 "settings.field.compatible" = "✓ 兼容 Splash %1$@";
 "settings.field.custom" = "自定义模型 ID（--model）";
 "settings.field.context" = "上下文大小（--max-context）";
@@ -65,12 +67,11 @@
 "status.stopped" = "Splash 已停止";
 "status.version" = "Splash：%1$@";
 "status.versionchecking" = "正在检查Splash版本…";
-"validate.agenturl" = "通过本地 LaunchAgent 管理模型和上下文仅在服务器 URL 指向 localhost 或 127.0.0.1 时可用。";
 "validate.badplist" = "给定的 LaunchAgent Plist 不会启动 Splash 服务器，未被修改。";
 "validate.labelfirst" = "请在切换模型之前单独修改 LaunchAgent 路径。";
 "validate.labeltaken" = "新的 LaunchAgent 标签已加载。请选择其他标签。";
 "validate.modelrequired" = "没有模型，Splash 服务器无法启动。请先选择一个模型。";
-"validate.noagent" = "未找到 Splash。请先用 Homebrew 安装。";
+"validate.noagent" = "未找到 Splash。请先用 Homebrew 安装，或在版本菜单中选择一个已发布版本。";
 "validate.plist" = "LaunchAgent Plist 无效，未被修改。";
 "validate.savfailed" = "无法保存 LaunchAgent 配置：%1$@";
 "validate.startfailed" = "无法启动新的 LaunchAgent 配置：%1$@";
@@ -85,9 +86,10 @@
 %1$@
 
 完整错误日志/堆栈跟踪：%2$@";
+"version.installed" = "（已安装）";
 "version.installing" = "正在安装 Splash %1$@。
 操作进行中，请等待完成。";
-"version.pick.detail" = "已安装：%1$@。列表包含带有匹配 macOS ARM64 安装存档和 SHA-256 文件的已发布稳定版。切换期间会停止正在运行的 Splash 服务器，之后再次启动。
+"version.pick.detail" = "第一个选项是系统中安装的 Splash（例如通过 Homebrew）。其他选项是 GitHub 已发布的稳定版本；它们会下载到 ~/.splashbar/splash-versions，仅供 SplashBar 使用，不会改动你的 PATH。已安装： %1$@。正在运行的 Splash 服务器会在切换期间停止，之后再次启动。如果无法加载 GitHub 发布列表，将改为列出 ~/.splashbar/splash-versions 中本地已安装的版本；本地已安装的版本会标有（已安装）。
 
 切换前请检查与你的模型的兼容性。";
 "version.pick.title" = "选择Splash版本";
@@ -96,8 +98,30 @@
 "version.success" = "Splash 版本已切换。已安装版本：%1$@";
 "version.switch" = "安装/切换";
 "window.title" = "SplashBar";
+"version.global.title" = "全局 — %1$@";
+"version.activating" = "正在切换到 Splash %1$@ …
+操作进行中，请等待完成。";
+"version.downloading" = "正在下载 Splash %1$@ …
+%2$@ / %3$@";
+"version.verifying" = "正在校验 Splash %1$@ 下载（SHA-256）…";
+"version.extracting" = "正在解压 Splash %1$@ …";
+"version.alreadyactive" = "Splash %1$@ 已经启用。";
+"version.error.download" = "下载 Splash %1$@ 失败。
+%2$@";
+"version.error.checksum" = "下载的 Splash %1$@ 与已发布的 SHA-256 校验和不匹配。该文件未被使用。";
+"version.error.extract" = "无法解压 Splash %1$@。
+%2$@";
+"version.error.wrapper" = "无法创建 Splash %1$@ 的 splash 可执行文件。";
+"version.error.notfound" = "未找到 Splash 安装。请选择一个已发布版本，或使用 Homebrew 安装 Splash。";
+"version.error.unloadfailed" = "切换前无法卸载正在运行的 Splash 服务：
+%1$@";
+"version.error.unexpectedlayout" = "发布存档的结构不符合预期。";
 "version.error.releasegone" = "所选版本在 GitHub 版本列表中不可用。";
 "version.error.stopstuck" = "无法可靠停止正在运行的 Splash 服务器。版本未切换。%1$@";
-"version.error.tapfailed" = "无法创建用于 release 版本的本地 tap：
-%1$@";
-"version.error.checksumfailed" = "无法为 Splash %1$@ 创建校验和或 Homebrew 公式。";
+"version.cancel" = "取消";
+"version.cancelconfirm.title" = "取消下载 Splash %1$@？";
+"version.cancelconfirm.detail" = "将中止下载 Splash %1$@。已创建的文件和目录 ~/.splashbar/splash-versions/%1$@ 将被删除。之前启用的 Splash 版本保持选中。";
+"version.cancelconfirm.confirm" = "取消下载";
+"version.cancelconfirm.keep" = "继续下载";
+"version.cancelling" = "正在中止下载并删除目录 …";
+"version.cancelled" = "已中止下载 Splash %1$@。已删除创建的文件和目录 ~/.splashbar/splash-versions/%1$@。之前启用的 Splash 版本保持选中。";
