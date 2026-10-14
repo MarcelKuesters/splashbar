@@ -32,7 +32,7 @@
 "settings.browse" = "Durchsuchen …";
 "settings.cancel" = "Abbrechen";
 "settings.close" = "Schließen";
-"settings.error.agent" = "Die Modell- und Kontextverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt.";
+"settings.error.agent" = "Die Modell- und Kontextverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt. Hosting auf 0.0.0.0 erfordert zusätzlich, dass ein API-Key gesetzt wird.";
 "settings.error.releases" = "Die veröffentlichten Splash-Versionen konnten nicht von GitHub geladen werden. Prüfe die Internetverbindung und versuche es erneut.";
 "settings.field.addpath" = "Zusätzlicher Modellpfad";
 "settings.field.agent" = "LaunchAgent-Label";
