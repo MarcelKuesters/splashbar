@@ -72,6 +72,7 @@ SplashBar auto-starts at login.
 Open **Settings …** from the SplashBar menu to configure your Splash
 installation. Settings are saved for the current macOS user and take effect
 without rebuilding the app. [The full reference for every setting](docs/SETTINGS.md)
+([German](docs/SETTINGS.de.md))
 covers where each one applies and how "Save" propagates to the LaunchAgent.
 
 | Setting | Default |

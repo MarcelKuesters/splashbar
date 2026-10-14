@@ -1,5 +1,7 @@
 # Settings Reference
 
+**Language: English | [Deutsch](SETTINGS.de.md)**
+
 SplashBar is a **controller**, not a server: it contains no inference engine of
 its own. It works on top of two independent subsystems, and almost every
 setting belongs to exactly one of them:

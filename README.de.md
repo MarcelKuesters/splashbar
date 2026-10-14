@@ -43,7 +43,7 @@ Systemsprache und sind in sieben Sprachen lokalisiert (de, en, fr, es, ja, zh, r
 - Zeigt die SplashBar-Version oben im Menü
 - Sichert den Modell-Cache nach `~/SplashBar-Backups` und stellt ihn aus
   einem Backup wieder her — der aktuelle Cache wird dabei beiseitegeschoben
-  und bei Fehlern zurückgesetzt, eine Wiederherstellung kann also nie ein
+  und bei Fehlern zurückgeschoben, eine Wiederherstellung kann also nie ein
   funktionierendes Modell zerstören
 - Legt in den Einstellungen fest, wo der Modell-Cache liegt (der
   Hugging-Face-Ordner, den Splash liest, übergeben als `HF_HUB_CACHE`)
@@ -75,7 +75,7 @@ damit SplashBar beim Login automatisch startet.
 Öffne **Einstellungen …** im SplashBar-Menü, um deine Splash-Installation
 einzurichten. Einstellungen werden für den aktuellen macOS-Benutzer
 gespeichert und gelten, ohne die App neu zu bauen. [Die vollständige
-Referenz aller Einstellungen](docs/SETTINGS.md) erklärt, wo jeweils was
+Referenz aller Einstellungen](docs/SETTINGS.de.md) erklärt, wo jeweils was
 angewendet wird und wie „Speichern" auf den LaunchAgent durchwirkt.
 
 | Einstellung | Standard |
@@ -171,7 +171,7 @@ in einem Fortschrittsfenster — der laufende Server und der Cache selbst
 bleiben unangetastet, und die Sicherung ist abbrechbar (das halbe Archiv
 wird dann gelöscht). Eine Wiederherstellung läuft transaktional ab: der
 aktuelle Cache wird beiseitegeschoben, das Archiv wird an seiner Stelle
-entpackt, und bei jedem Fehler wird der alte Cache zurückgesetzt, sodass
+entpackt, und bei jedem Fehler wird der alte Cache zurückgeschoben, sodass
 eine fehlgeschlagene Wiederherstellung kein funktionierendes Modell
 zerstören kann. Wähle eines der vorhandenen Archive in einem Datei-Picker;
 die jüngsten stehen oben. Nutze eine Sicherung, bevor du den Cache zum
