@@ -569,7 +569,65 @@ func folderSize(of url: URL) -> Int64 {
 func tr(_ key: String, _ args: CVarArg...) -> String {
     let format = Bundle.main.localizedString(forKey: key, value: key, table: nil)
     guard !args.isEmpty else { return format }
-    return String(format: format, locale: Locale.current, arguments: args)
+    // Never hand the format string to Core Foundation: on macOS 27,
+    // String(format:locale:arguments:) mangles String arguments (%s reads a
+    // dangling C buffer, so it prints garbage or crashes with
+    // EXC_BAD_ACCESS). The backup confirm dialog hit exactly that.
+    return formatSwift(format, args)
+}
+
+/// Substitutes %s, %@, %d, %ld, %llu, %f, %lf and their N$ positional
+/// forms, in pure Swift. The N$ form lets one value appear twice ("~26.5 GB
+/// ... needs ~26.5 GB of free space") without duplicating the argument.
+func formatSwift(_ format: String, _ args: [CVarArg]) -> String {
+    var out = ""
+    var seq = 0
+    var i = format.startIndex
+    while i < format.endIndex {
+        let c = format[i]
+        if c != "%" {
+            out.append(c)
+            i = format.index(after: i)
+            continue
+        }
+        var j = format.index(after: i)
+        var position: Int?
+        if j < format.endIndex, format[j].isNumber {
+            var digits = ""
+            while j < format.endIndex, format[j].isNumber {
+                digits.append(format[j])
+                j = format.index(after: j)
+            }
+            if j < format.endIndex, format[j] == "$" {
+                position = Int(digits)
+                j = format.index(after: j)
+            }
+        }
+        while j < format.endIndex, format[j].isNumber
+                || (format[j] == "." && format.index(after: j) < format.endIndex) {
+            j = format.index(after: j)
+        }
+        guard j < format.endIndex, "s@dflluXx".contains(format[j]) else {
+            out.append("%")  // Not a directive (e.g. "100% of") — keep it.
+            i = format.index(after: i)
+            continue
+        }
+        let index = position.flatMap { $0 - 1 }
+            .flatMap { $0 >= 0 && $0 < args.count ? $0 : nil }
+            ?? (seq < args.count ? seq : nil)
+        if position == nil { seq += 1 }
+        if let index { out.append(renderArgument(args[index], format[j])) }
+        i = format.index(after: j)
+    }
+    return out
+}
+
+private func renderArgument(_ arg: CVarArg, _ conversion: Character) -> String {
+    if let s = arg as? String { return s }
+    if String(conversion) == "f" || String(conversion) == "lf", let d = arg as? Double {
+        return d.formatted()
+    }
+    return "\(arg)"
 }
 
 func availableSplashReleases() -> [SplashRelease] {
