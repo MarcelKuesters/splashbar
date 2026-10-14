@@ -1,6 +1,8 @@
 import Cocoa
 
 struct SplashBarSettings {
+    /// Bump the version after each PR merge
+    static let appVersion = "0.1.0"
     /// Sentinel for the Splash installation found on the user's PATH (for
     /// example a Homebrew install). Any other value is a version that SplashBar
     /// downloads itself into `~/.splashbar/splash-versions/<version>`.
@@ -17,6 +19,7 @@ struct SplashBarSettings {
     static let defaultAllowedHost = ""
 
     private enum Key {
+        static let versionLabel = "versionLabel"
         static let launchdLabel = "launchdLabel"
         static let serverURL = "serverURL"
         static let agentPlistPath = "agentPlistPath"
@@ -32,6 +35,7 @@ struct SplashBarSettings {
         static let selectedVersion = "selectedVersion"
     }
 
+    var versionLabel: String
     var launchdLabel: String
     var serverURL: URL
     var agentPlistPath: String
@@ -47,6 +51,7 @@ struct SplashBarSettings {
     var selectedVersion: String
 
     init(defaults: UserDefaults = .standard) {
+        versionLabel = Self.appVersion
         launchdLabel = defaults.string(forKey: Key.launchdLabel) ?? Self.defaultLaunchdLabel
         serverURL = URL(string: defaults.string(forKey: Key.serverURL) ?? "") ?? Self.defaultServerURL
         agentPlistPath = defaults.string(forKey: Key.agentPlistPath)
@@ -64,6 +69,7 @@ struct SplashBarSettings {
     }
 
     func save(to defaults: UserDefaults = .standard) {
+        defaults.set(versionLabel, forKey: Key.versionLabel)
         defaults.set(launchdLabel, forKey: Key.launchdLabel)
         defaults.set(serverURL.absoluteString, forKey: Key.serverURL)
         defaults.set(agentPlistPath, forKey: Key.agentPlistPath)
@@ -726,6 +732,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let statusLine = NSMenuItem(title: tr("status.checking"), action: nil, keyEquivalent: "")
     let modelLine = NSMenuItem(title: tr("status.modelchecking"), action: nil, keyEquivalent: "")
     let memLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    let appVersionLine = NSMenuItem(title: "SplashBar v" + SplashBarSettings.appVersion, action: nil, keyEquivalent: "")
     let versionLine = NSMenuItem(title: tr("status.versionchecking"), action: nil, keyEquivalent: "")
     var startItem: NSMenuItem!
     var stopItem: NSMenuItem!
@@ -788,6 +795,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusLine.isEnabled = false
         modelLine.isEnabled = false
         memLine.isEnabled = false
+        menu.addItem(appVersionLine)
         menu.addItem(statusLine)
         menu.addItem(modelLine)
         menu.addItem(memLine)
