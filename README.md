@@ -1,5 +1,7 @@
 # SplashBar
 
+**Language: English | [Deutsch](README.de.md)**
+
 A tiny macOS menu bar app to control a local [Splash](https://github.com/incoai/splash)
 inference server: start/stop/restart the `launchctl` service, watch the model's
 GPU memory footprint, see the model that is actually loaded, switch between
@@ -36,6 +38,12 @@ seven languages (de, en, fr, es, ja, zh, ru).
   to `~/.splashbar/splash-versions` and used by SplashBar only, without touching
   your PATH
 - Shows the model that is currently loaded (live, from the server's `/v1/models`)
+- Shows the SplashBar version at the top of the menu
+- Backs the model cache up to `~/SplashBar-Backups` and restores it from a
+  backup — the current cache is set aside while the archive is unpacked and is
+  put back if anything fails, so a restore can never destroy a working model
+- Lets you move the model cache itself (the Hugging Face directory Splash
+  reads, passed as `HF_HUB_CACHE`) in the settings
 
 No dependencies, no installer, no daemon of its own — one Swift file, built
 with the Swift toolchain that ships with macOS.
@@ -61,7 +69,7 @@ SplashBar auto-starts at login.
 
 ### Configuration
 
-Open **Einstellungen …** from the SplashBar menu to configure your Splash
+Open **Settings …** from the SplashBar menu to configure your Splash
 installation. Settings are saved for the current macOS user and take effect
 without rebuilding the app. [The full reference for every setting](docs/SETTINGS.md)
 covers where each one applies and how "Save" propagates to the LaunchAgent.
@@ -80,6 +88,7 @@ covers where each one applies and how "Save" propagates to the LaunchAgent.
 | API key (--api-key) | None — the argument is left out |
 | Allowed host (--allowed-host) | None — the argument is left out |
 | Additional model search folder | None |
+| Model cache directory | `~/.cache/huggingface/hub` (the Hugging Face default) |
 
 The server URL is shared by the chat shortcut and the `/v1/models` health
 check. Paths may start with `~` to refer to your home directory. Choose a
@@ -89,7 +98,7 @@ Saving a new model or a different context size updates the configured Splash
 LaunchAgent. If the server is already loaded, SplashBar asks: restart it to
 apply the changes immediately, or save the changes and apply them the next
 time the server starts, without interrupting the running instance. If the
-server is stopped, the LaunchAgent is prepared and the next **Starten**
+server is stopped, the LaunchAgent is prepared and the next **Start**
 action starts it.
 
 The context size caps the window available per conversation; `Auto` lets
@@ -103,7 +112,7 @@ argument is left out entirely.
 The model list scans the Hugging Face cache used by Splash (`HF_HUB_CACHE`,
 `HF_HOME/hub`, or `~/.cache/huggingface/hub`) and LM Studio's
 `~/.lmstudio/models` folder. An optional additional folder can be entered in
-settings or selected with **Durchsuchen …** in the folder picker; the model
+settings or selected with **Browse …** in the folder picker; the model
 lists are rescanned immediately after choosing it. It is scanned alongside
 those standard locations. Models found in these folders are listed by
 repository ID. The selector has separate lists
@@ -115,7 +124,14 @@ one of the built-in model suggestions. A local folder being found does not by
 itself guarantee that its model format is supported by the installed Splash
 version. A separate editable field accepts a custom repository ID.
 
-**Splash-Version auswählen …** loads the stable releases from the official
+The **Model cache directory** setting controls where the model files actually
+live: it is written to the Splash LaunchAgent as `HF_HUB_CACHE`, so Splash
+downloads and reads its models there instead of in the Hugging Face default.
+An empty field uses the default. Moving the directory is a one-time step —
+existing model files must be copied or moved there (or restored from a
+backup) before the next model load.
+
+**Choose Splash version …** loads the stable releases from the official
 GitHub Releases API. The first entry is the Splash installed on your system
 (for example via Homebrew), checked against the `splash` executable on your
 PATH; the remaining entries are stable releases that include the macOS ARM64
@@ -137,6 +153,19 @@ created `~/.splashbar/splash-versions/<version>` directory, and keeps the
 previously active Splash version selected. If the operation fails, the window
 points to a detailed log with command output and the application stack trace
 in `~/Library/Logs/SplashBar/`.
+
+### Backing up the model
+
+The menu offers **Back up model …** and **Restore model …**. A backup
+archives the model cache (by default `~/.cache/huggingface/hub`) to
+`~/SplashBar-Backups/models-<timestamp>.tar` in a progress window — the
+running server and the cache itself are untouched, and the backup can be
+cancelled (the partial archive is deleted). A restore works transactionally:
+the current cache is moved aside, the archive is unpacked in its place, and
+if anything fails the old cache is put back, so a failed restore cannot
+destroy a working model. Choose one of the existing archives in a file
+picker; the most recent ones are listed first. Use a backup before deleting
+the cache to reclaim disk space — restore it later with **Restore model …**.
 
 ## Uninstall
 
