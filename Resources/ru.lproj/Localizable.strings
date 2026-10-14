@@ -32,7 +32,7 @@
 "settings.browse" = "Обзор …";
 "settings.cancel" = "Отмена";
 "settings.close" = "Закрыть";
-"settings.error.agent" = "Управление моделью и контекстом через локальный LaunchAgent доступно только при URL сервера localhost или 127.0.0.1.";
+"settings.error.agent" = "Управление моделью и контекстом через локальный LaunchAgent доступно только при URL сервера localhost или 127.0.0.1. Хостинг на 0.0.0.0 также требует задать ключ API.";
 "settings.error.releases" = "Не удалось загрузить опубликованные версии Splash с GitHub. Проверьте подключение к интернету и повторите.";
 "settings.field.addpath" = "Дополнительный путь к моделям";
 "settings.field.agent" = "Метка LaunchAgent";
