@@ -669,7 +669,7 @@ func shellQuote(_ value: String) -> String {
 }
 
 func serverAddress(for url: URL) -> String {
-    let host = url.host ?? "Server"
+    let host = url.host() ?? "Server"
     let displayHost = host.contains(":") ? "[\(host)]" : host
     let defaultPort: Int? = switch url.scheme?.lowercased() {
     case "http": 80
@@ -832,7 +832,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             var memoryGB: Double = 0
             var model = ""
             if !pid.isEmpty {
-                let healthURL = currentSettings.serverURL
+                // The server may be configured for a non-loopback host (e.g.
+                // 0.0.0.0 with an API key), but the probe must always reach
+                // loopback: keep the scheme and port of the configured URL,
+                // force the host to 127.0.0.1.
+                var healthComponents = URLComponents(url: currentSettings.serverURL, resolvingAgainstBaseURL: false)
+                healthComponents?.host = "127.0.0.1"
+                let healthURL = (healthComponents?.url ?? currentSettings.serverURL)
                     .appendingPathComponent("v1")
                     .appendingPathComponent("models")
                 var probeArguments = ["-s", "-m", shellQuote(String(currentSettings.requestTimeout))]
@@ -1110,16 +1116,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updated.apiKey = requestedAPIKey
         updated.allowedHost = requestedAllowedHost
 
+        // The URL currently stored in the settings. When it differs from the
+        // validated one, the LaunchAgent's --port argument is rewritten and a
+        // running server is restarted so the new address takes effect.
+        let currentServerUrl = settings.serverURL
         let agentArguments = readAgentPlist(at: updated.agentPlistPath)?["ProgramArguments"] as? [String] ?? []
         let currentAgentModel = modelID(in: agentArguments)
+        let serverUrlChanged = serverURL != currentServerUrl
         let modelChanged = !requestedModel.isEmpty && requestedModel != currentAgentModel
         let currentAgentContext = contextSize(in: agentArguments) ?? .auto
         let contextChanged = requestedContext != currentAgentContext
         let apiKeyChanged = requestedAPIKey != (argumentValue("--api-key", in: agentArguments) ?? "")
         let allowedHostChanged = requestedAllowedHost != (argumentValue("--allowed-host", in: agentArguments) ?? "")
 
-        if modelChanged || contextChanged || apiKeyChanged || allowedHostChanged {
-            guard isLocalServerURL(serverURL) else {
+        if serverUrlChanged || modelChanged || contextChanged || apiKeyChanged || allowedHostChanged {
+            guard isValidServerUrl(serverURL, apiKey: requestedAPIKey) else {
                 showSettingsError(tr("settings.error.agent"))
                 return
             }
@@ -1175,9 +1186,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             && !text.split(separator: "/").contains("..")
     }
 
-    func isLocalServerURL(_ url: URL) -> Bool {
-        guard let host = url.host?.lowercased() else { return false }
-        return ["localhost", "127.0.0.1", "::1"].contains(host)
+    /// Validates the server URL for the LaunchAgent-based features.
+    /// Loopback addresses are always allowed; 0.0.0.0 binds to every
+    /// interface, so it is only accepted together with an API key — a
+    /// keyless server must never be reachable from the whole network.
+    func isValidServerUrl(_ url: URL, apiKey: String) -> Bool {
+        var host = (url.host ?? "").lowercased()
+        host = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        if ["localhost", "127.0.0.1", "::1"].contains(host) { return true }
+        return host == "0.0.0.0" && !apiKey.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     func applyServeArguments(
@@ -1228,6 +1245,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             arguments[index] = "--port=\(port)"
         } else {
             arguments += ["--port", port]
+        }
+
+        let host = String(updatedSettings.serverURL.host() ?? "127.0.0.1")
+        if let index = arguments.firstIndex(of: "--host"), arguments.indices.contains(index + 1) {
+            arguments[index + 1] = host
+        } else if let index = arguments.firstIndex(where: { $0.hasPrefix("--host=") }) {
+            arguments[index] = "--host=\(host)"
+        } else {
+            arguments += ["--host", host]
         }
 
         // A cleared model field leaves any existing --model argument untouched.
