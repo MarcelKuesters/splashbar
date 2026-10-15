@@ -125,6 +125,26 @@ Save → validate everything → ① app settings into UserDefaults
   works for most keys, but the next "Save" in the app overwrites it from the
   stored settings — and `RunAtLoad` is re-synced with the launch-at-login
   toggle on every save *and* on every refresh, so a hand edit there reverts.
+- **Model backups**: `~/SplashBar-Backups/models-<timestamp>.tar` — created
+  by the "Back up model…" menu entry (see below)
+
+## Model backups (emergency fallback)
+
+The menu entries **Back up model…** and **Restore model…** guard against the
+one scenario nothing else covers: the model cache getting deleted or
+corrupted, so the only way back would be a multi-GB re-download.
+
+- **Back up model…** tars the whole model cache (group 4's *Model cache
+  directory*) into `~/SplashBar-Backups/models-<timestamp>.tar` with a
+  progress bar and cancel. The cache itself stays untouched; the backup is a
+  second copy.
+- **Restore model…** lists the existing archives, lets you pick one, and
+  restores it *transactionally*: the current cache is moved aside first, the
+  archive is extracted, and if that fails the old cache is moved back. A
+  failed or cancelled restore never leaves a half-restore behind.
+
+A Time Machine or other disk backup of `~/` covers the same scenario
+automatically — these entries are the fast, in-app version of that.
 
 ## Notes
 
