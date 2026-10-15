@@ -32,6 +32,7 @@
 "settings.browse" = "Обзор …";
 "settings.cancel" = "Отмена";
 "settings.close" = "Закрыть";
+"settings.error.launchatlogin" = "Не удалось изменить настройку запуска при входе: %1$@";
 "settings.error.agent" = "Управление моделью и контекстом через локальный LaunchAgent доступно только при URL сервера localhost или 127.0.0.1. Хостинг на 0.0.0.0 также требует задать ключ API.";
 "settings.error.releases" = "Не удалось загрузить опубликованные версии Splash с GitHub. Проверьте подключение к интернету и повторите.";
 "settings.field.addpath" = "Дополнительный путь к моделям";
@@ -42,6 +43,7 @@
 "settings.field.custom" = "Своя ID модели (--model)";
 "settings.field.context" = "Размер контекста (--max-context)";
 "settings.field.idle" = "Порог простоя (ГБ)";
+"settings.field.launchatlogin" = "Запускать при входе";
 "settings.field.log" = "Путь к журналу";
 "settings.field.other" = "✕ Не подходит / не проверено";
 "settings.field.plist" = "Plist LaunchAgent";

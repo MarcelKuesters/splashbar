@@ -32,6 +32,7 @@
 "settings.browse" = "Examinar …";
 "settings.cancel" = "Cancelar";
 "settings.close" = "Cerrar";
+"settings.error.launchatlogin" = "No se pudo actualizar la configuración de inicio al iniciar sesión: %1$@";
 "settings.error.agent" = "La gestión del modelo y del contexto a través de un LaunchAgent local solo está disponible cuando la URL del servidor apunta a localhost o 127.0.0.1. El hosting en 0.0.0.0 requiere además configurar una clave de API.";
 "settings.error.releases" = "No se pudieron cargar las versiones publicadas de Splash desde GitHub. Comprueba tu conexión a Internet e inténtalo de nuevo.";
 "settings.field.addpath" = "Ruta de modelos adicional";
@@ -42,6 +43,7 @@
 "settings.field.custom" = "ID de modelo personalizada (--model)";
 "settings.field.context" = "Tamaño de contexto (--max-context)";
 "settings.field.idle" = "Umbral de inactividad (GB)";
+"settings.field.launchatlogin" = "Iniciar al iniciar sesión";
 "settings.field.log" = "Ruta del registro";
 "settings.field.other" = "✕ Incompatible / sin verificar";
 "settings.field.plist" = "Plist del LaunchAgent";

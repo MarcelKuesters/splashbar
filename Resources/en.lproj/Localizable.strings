@@ -32,6 +32,7 @@
 "settings.browse" = "Browse …";
 "settings.cancel" = "Cancel";
 "settings.close" = "Close";
+"settings.error.launchatlogin" = "The launch-at-login setting could not be updated: %1$@";
 "settings.error.agent" = "Model and context management via a local LaunchAgent is only available when the server URL points to localhost or 127.0.0.1. Hosting on 0.0.0.0 requires API key to be set as well.";
 "settings.error.releases" = "The released Splash versions could not be loaded from GitHub. Check your internet connection and try again.";
 "settings.field.addpath" = "Additional model path";
@@ -42,6 +43,7 @@
 "settings.field.custom" = "Custom model ID (--model)";
 "settings.field.context" = "Context size (--max-context)";
 "settings.field.idle" = "Idle threshold (GB)";
+"settings.field.launchatlogin" = "Launch at login";
 "settings.field.log" = "Log path";
 "settings.field.other" = "✕ Incompatible / unverified";
 "settings.field.plist" = "LaunchAgent plist";

@@ -32,6 +32,7 @@
 "settings.browse" = "参照…";
 "settings.cancel" = "キャンセル";
 "settings.close" = "閉じる";
+"settings.error.launchatlogin" = "ログイン時の起動設定を更新できませんでした: %1$@";
 "settings.error.agent" = "ローカルLaunchAgentによるモデルとコンテキストの管理は、サーバーURLがlocalhostまたは127.0.0.1を指す場合のみ利用可能です。0.0.0.0でのホスティングにはAPIキーの設定も必要です。";
 "settings.error.releases" = "GitHubから公開Splashバージョンを読み込めませんでした。インターネット接続を確認して再試行してください。";
 "settings.field.addpath" = "追加モデルパス";
@@ -42,6 +43,7 @@
 "settings.field.custom" = "カスタムモデルID（--model）";
 "settings.field.context" = "コンテキストサイズ（--max-context）";
 "settings.field.idle" = "待機閾値（GB）";
+"settings.field.launchatlogin" = "ログイン時に起動";
 "settings.field.log" = "ログパス";
 "settings.field.other" = "✕ 非互換 / 未確認";
 "settings.field.plist" = "LaunchAgent Plist";

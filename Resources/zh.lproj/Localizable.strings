@@ -32,6 +32,7 @@
 "settings.browse" = "浏览…";
 "settings.cancel" = "取消";
 "settings.close" = "关闭";
+"settings.error.launchatlogin" = "无法更新登录时启动的设置：%1$@";
 "settings.error.agent" = "通过本地 LaunchAgent 管理模型和上下文仅在服务器 URL 指向 localhost 或 127.0.0.1 时可用。在 0.0.0.0 上托管还需要设置 API 密钥。";
 "settings.error.releases" = "无法从 GitHub 加载已发布的 Splash 版本。请检查网络连接并重试。";
 "settings.field.addpath" = "附加模型路径";
@@ -42,6 +43,7 @@
 "settings.field.custom" = "自定义模型 ID（--model）";
 "settings.field.context" = "上下文大小（--max-context）";
 "settings.field.idle" = "空闲阈值（GB）";
+"settings.field.launchatlogin" = "登录时启动";
 "settings.field.log" = "日志路径";
 "settings.field.other" = "✕ 不兼容/未验证";
 "settings.field.plist" = "LaunchAgent Plist";

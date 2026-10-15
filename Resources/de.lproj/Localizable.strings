@@ -32,6 +32,7 @@
 "settings.browse" = "Durchsuchen …";
 "settings.cancel" = "Abbrechen";
 "settings.close" = "Schließen";
+"settings.error.launchatlogin" = "Das Startverhalten bei der Anmeldung konnte nicht geändert werden: %1$@";
 "settings.error.agent" = "Die Modell- und Kontextverwaltung über einen lokalen LaunchAgent ist nur verfügbar, wenn die Server-URL auf localhost oder 127.0.0.1 zeigt. Hosting auf 0.0.0.0 erfordert zusätzlich, dass ein API-Key gesetzt wird.";
 "settings.error.releases" = "Die veröffentlichten Splash-Versionen konnten nicht von GitHub geladen werden. Prüfe die Internetverbindung und versuche es erneut.";
 "settings.field.addpath" = "Zusätzlicher Modellpfad";
@@ -42,6 +43,7 @@
 "settings.field.custom" = "Eigene Modell-ID (--model)";
 "settings.field.context" = "Kontextgröße (--max-context)";
 "settings.field.idle" = "Idle-Grenze (GB)";
+"settings.field.launchatlogin" = "Bei der Anmeldung starten";
 "settings.field.log" = "Protokollpfad";
 "settings.field.other" = "✕ Unpassend / ungeprüft";
 "settings.field.plist" = "LaunchAgent-Plist";
