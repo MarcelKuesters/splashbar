@@ -33,6 +33,7 @@
 "settings.cancel" = "Annuler";
 "settings.close" = "Fermer";
 "settings.error.agent" = "La gestion du modèle et du contexte via un LaunchAgent local n'est disponible que si l'URL du serveur pointe vers localhost ou 127.0.0.1.";
+"settings.error.launchatlogin" = "Le réglage de lancement à la connexion n'a pas pu être modifié : %1$@";
 "settings.error.releases" = "Les versions publiées de Splash n'ont pas pu être chargées depuis GitHub. Vérifiez votre connexion Internet et réessayez.";
 "settings.field.addpath" = "Chemin de modèles supplémentaire";
 "settings.field.agent" = "Étiquette du LaunchAgent";
@@ -42,6 +43,7 @@
 "settings.field.custom" = "ID de modèle personnalisée (--model)";
 "settings.field.context" = "Taille du contexte (--max-context)";
 "settings.field.idle" = "Seuil d'inactivité (Go)";
+"settings.field.launchatlogin" = "Lancer à la connexion";
 "settings.field.log" = "Chemin du journal";
 "settings.field.other" = "✕ Incompatible / non vérifié";
 "settings.field.plist" = "Plist du LaunchAgent";

@@ -2,12 +2,19 @@ import Cocoa
 
 struct SplashBarSettings {
     /// Bump the version after each PR merge
-    static let appVersion = "0.1.0"
+    static let appVersion = "0.1.1"
     /// Sentinel for the Splash installation found on the user's PATH (for
     /// example a Homebrew install). Any other value is a version that SplashBar
     /// downloads itself into `~/.splashbar/splash-versions/<version>`.
     static let globalVersion = "global"
     static let defaultLaunchdLabel = "local.llm.splash"
+    /// The LaunchAgent that makes SplashBar *itself* start at login (installed
+    /// by build.sh). Managed by the "Launch at login" setting; its contents are
+    /// fixed, so it can be removed and recreated freely.
+    static let appAgentLabel = "local.splashbar"
+    static var appAgentPlistPath: String {
+        NSHomeDirectory() + "/Library/LaunchAgents/\(appAgentLabel).plist"
+    }
     static let defaultServerURL = URL(string: "http://127.0.0.1:8080")!
     static let defaultLogPath = NSHomeDirectory() + "/Library/Logs/Splash/splash.log"
     static let defaultRefreshInterval: TimeInterval = 5
@@ -33,6 +40,7 @@ struct SplashBarSettings {
         static let apiKey = "apiKey"
         static let allowedHost = "allowedHost"
         static let selectedVersion = "selectedVersion"
+        static let launchAtLogin = "launchAtLogin"
     }
 
     var versionLabel: String
@@ -49,6 +57,8 @@ struct SplashBarSettings {
     var apiKey: String
     var allowedHost: String
     var selectedVersion: String
+    /// Whether SplashBar itself starts at login (its own LaunchAgent).
+    var launchAtLogin: Bool
 
     init(defaults: UserDefaults = .standard) {
         versionLabel = Self.appVersion
@@ -66,6 +76,10 @@ struct SplashBarSettings {
         apiKey = defaults.string(forKey: Key.apiKey) ?? Self.defaultAPIKey
         allowedHost = defaults.string(forKey: Key.allowedHost) ?? Self.defaultAllowedHost
         selectedVersion = defaults.string(forKey: Key.selectedVersion) ?? Self.globalVersion
+        // First start (no stored value yet): follow what is actually on disk,
+        // so the checkbox matches the current launch-at-login behavior.
+        launchAtLogin = defaults.object(forKey: Key.launchAtLogin) as? Bool
+            ?? FileManager.default.fileExists(atPath: Self.appAgentPlistPath)
     }
 
     func save(to defaults: UserDefaults = .standard) {
@@ -83,6 +97,7 @@ struct SplashBarSettings {
         defaults.set(apiKey, forKey: Key.apiKey)
         defaults.set(allowedHost, forKey: Key.allowedHost)
         defaults.set(selectedVersion, forKey: Key.selectedVersion)
+        defaults.set(launchAtLogin, forKey: Key.launchAtLogin)
     }
 }
 
@@ -832,6 +847,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // While quitting, the dot stays orange ("killing the instance") no
         // matter what the state probe reports until the app is gone.
         guard !isQuitting else { return }
+        // Reconcile the on-disk state with the stored launch-at-login
+        // preference: build.sh or another tool may have created or changed
+        // the files although the user turned the feature off.
+        // - the app's own agent must not exist when the preference is off,
+        // - the splash agent's RunAtLoad must match the preference, so the
+        //   splash executable only starts on its own at login when the app
+        //   starts too (and can supervise it). With the preference off and
+        //   RunAtLoad true, launchd would launch the executable at login
+        //   while this app — its only controller — is not running.
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            if !self.settings.launchAtLogin {
+                self.applyLaunchAtLogin(false)
+            }
+            self.syncAgentRunAtLogin(self.settings.launchAtLogin)
+        }
         let currentSettings = settings
         let serviceTarget = target
         DispatchQueue.global(qos: .utility).async {
@@ -969,10 +1000,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func start() {
         DispatchQueue.global().async {
-            if self.isLoaded() {
-                sh("launchctl kickstart \(shellQuote(self.target))")
-            } else {
+            // Bootstrap the agent when it is not loaded, then kick the job
+            // when no process is running: with a RunAtLoad=false agent the
+            // bootstrap alone would leave the job loaded but inert, so the
+            // explicit kickstart is what starts the executable in every
+            // configuration.
+            if !self.isLoaded() {
                 sh("launchctl bootstrap gui/\(self.uid) \(shellQuote(expandedPath(self.settings.agentPlistPath)))")
+            }
+            if self.servicePID(self.target) == nil {
+                sh("launchctl kickstart \(shellQuote(self.target))")
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.refresh() }
         }
@@ -991,6 +1028,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 sh("launchctl kickstart -k \(shellQuote(self.target))")
             } else {
                 sh("launchctl bootstrap gui/\(self.uid) \(shellQuote(expandedPath(self.settings.agentPlistPath)))")
+                if self.servicePID(self.target) == nil {
+                    sh("launchctl kickstart \(shellQuote(self.target))")
+                }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.refresh() }
         }
@@ -1026,6 +1066,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         contextField.selectItem(withTitle: settings.maxContext.displayName)
         let apiKeyField = NSTextField(string: settings.apiKey)
         let allowedHostField = NSTextField(string: settings.allowedHost)
+        let launchAtLoginField = NSButton(checkboxWithTitle: tr("settings.field.launchatlogin"), target: nil, action: nil)
+        launchAtLoginField.state = settings.launchAtLogin ? .on : .off
         compatibleModelField.isEditable = false
         otherModelField.isEditable = false
         compatibleModelsField = compatibleModelField
@@ -1046,6 +1088,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         customModelField.delegate = modelSelectionCoordinator
 
         let fields: [(String, NSView)] = [
+            ("", launchAtLoginField),
             (tr("settings.field.url"), urlField),
             (tr("settings.field.compatible", currentSplashVersion), compatibleModelField),
             (tr("settings.field.other"), otherModelField),
@@ -1092,6 +1135,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let requestedAPIKey = apiKeyField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let requestedAllowedHost = allowedHostField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let additionalModelsPath = additionalPathField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestedLaunchAtLogin = launchAtLoginField.state == .on
         guard let serverURL = validatedServerURL(serverText),
               requestedModel.isEmpty || validatedModelID(requestedModel),
               agentLabelField.stringValue.range(of: #"^[A-Za-z0-9][A-Za-z0-9._-]*$"#, options: .regularExpression) != nil,
@@ -1108,6 +1152,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         var updated = settings
+        let currentLaunchAtLogin = settings.launchAtLogin
+        updated.launchAtLogin = requestedLaunchAtLogin
         let oldDefaultPlist = NSHomeDirectory() + "/Library/LaunchAgents/\(settings.launchdLabel).plist"
         updated.launchdLabel = agentLabelField.stringValue
         updated.agentPlistPath = plistField.stringValue
@@ -1186,7 +1232,90 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         timer = Timer.scheduledTimer(withTimeInterval: settings.refreshInterval, repeats: true) { [weak self] _ in
             self?.refresh()
         }
+        // The login agent belongs to the app itself, not to the server, so the
+        // toggle is applied directly: it takes effect at the next login and
+        // needs no server restart. The splash agent's RunAtLoad follows the
+        // same toggle, so the executable never starts at login on its own.
+        if requestedLaunchAtLogin != currentLaunchAtLogin {
+            applyLaunchAtLogin(requestedLaunchAtLogin)
+            syncAgentRunAtLogin(requestedLaunchAtLogin)
+        }
         refresh()
+    }
+
+    /// (Re)creates or removes the LaunchAgent that makes SplashBar itself
+    /// start at login. The agent's contents are fixed (label, executable path,
+    /// RunAtLoad), so removing it when the toggle is off loses no user state,
+    /// and enabling simply writes the file back. launchd reads the file at the
+    /// next login, which is when the change takes effect. The agent is
+    /// therefore never bootstrapped from here: that would start a second
+    /// SplashBar instance while this one is running. A loaded service is
+    /// booted out when turning the feature off, unless its process is this
+    /// very app instance — booting that out would terminate the app, so in
+    /// that case only the file is removed. The splash agent's RunAtLoad is a
+    /// separate concern handled by `syncAgentRunAtLogin`; callers that change
+    /// the toggle should run both.
+    func applyLaunchAtLogin(_ enabled: Bool) {
+        let label = SplashBarSettings.appAgentLabel
+        let serviceTarget = "gui/\(uid)/\(label)"
+        let plistPath = SplashBarSettings.appAgentPlistPath
+        let fileManager = FileManager.default
+        let isLoaded = !sh("launchctl print \(shellQuote(serviceTarget)) >/dev/null 2>&1 && echo yes").isEmpty
+        let serviceOwnsThisProcess = isLoaded && servicePID(serviceTarget) == String(getpid())
+
+        if enabled {
+            let agent: [String: Any] = [
+                "Label": label,
+                "ProgramArguments": [Bundle.main.executableURL?.path
+                    ?? "/Applications/SplashBar.app/Contents/MacOS/SplashBar"],
+                "RunAtLoad": true,
+                "KeepAlive": false,
+                "ProcessType": "Interactive"
+            ]
+            do {
+                let url = URL(fileURLWithPath: plistPath)
+                try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                let data = try PropertyListSerialization.data(fromPropertyList: agent, format: .xml, options: 0)
+                try data.write(to: url, options: .atomic)
+            } catch {
+                showSettingsError(tr("settings.error.launchatlogin", error.localizedDescription))
+            }
+            return
+        }
+
+        if isLoaded, !serviceOwnsThisProcess {
+            _ = runCommand("/bin/launchctl", ["bootout", serviceTarget])
+        }
+        try? fileManager.removeItem(atPath: plistPath)
+    }
+
+    /// Keeps the splash agent's `RunAtLoad` key in sync with the launch at
+    /// login preference, so the splash executable only starts on its own at
+    /// login when the menubar app starts too (and can supervise the server).
+    /// With the preference off, a `true` left behind by an older build or a
+    /// hand edit would make launchd launch the executable at login while the
+    /// app — its only controller — is not running. Only that one key is
+    /// touched, and the file is rewritten only when it differs, so this is
+    /// cheap enough to run on every refresh. A missing agent file (the server
+    /// is started without one) is a no-op.
+    func syncAgentRunAtLogin(_ enabled: Bool) {
+        let plistURL = URL(fileURLWithPath: expandedPath(settings.agentPlistPath))
+        guard let data = try? Data(contentsOf: plistURL),
+              let value = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
+              var plist = value as? [String: Any] else { return }
+        // launchd starts a job at load time when RunAtLoad is absent, so an
+        // absent key counts as true.
+        let current = (plist["RunAtLoad"] as? Bool) ?? true
+        guard current != enabled else { return }
+        plist["RunAtLoad"] = enabled
+        do {
+            try FileManager.default.createDirectory(at: plistURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let out = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            try out.write(to: plistURL, options: .atomic)
+        } catch {
+            // Best effort: the preference itself is stored either way, and
+            // the next refresh retries the sync.
+        }
     }
 
     func validatedModelID(_ text: String) -> Bool {
@@ -1299,7 +1428,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         plist["Label"] = updatedSettings.launchdLabel
         plist["ProgramArguments"] = arguments
-        plist["RunAtLoad"] = true
+        // The splash executable is owned by this app, so it must not be
+        // launched by launchd at login unless the app starts too (and can
+        // supervise the server): RunAtLoad mirrors the launch-at-login
+        // preference instead of a fixed true.
+        plist["RunAtLoad"] = updatedSettings.launchAtLogin
         plist["KeepAlive"] = false
         plist["ProcessType"] = "Interactive"
         plist["StandardOutPath"] = expandedPath(updatedSettings.logPath)
@@ -1351,6 +1484,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             _ = runCommand("/bin/launchctl", ["bootstrap", "gui/\(uid)", oldPath])
             return tr("validate.startfailed", started.output)
+        }
+        // A RunAtLoad=false agent is loaded but inert after the bootstrap;
+        // "apply and restart" means the server must come back with the new
+        // arguments, so kick the job when nothing is running yet.
+        if servicePID(newTarget) == nil {
+            _ = runCommand("/bin/launchctl", ["kickstart", newTarget])
         }
         return nil
     }
@@ -2070,7 +2209,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return tr("validate.badplist")
         }
         arguments[0] = executablePath
+        // The rest of the file is preserved on version switches, so sync the
+        // RunAtLoad key with the launch-at-login preference explicitly; a
+        // stale value (for example true from an older build) would otherwise
+        // survive and launch the executable at login without the app.
         plist["ProgramArguments"] = arguments
+        plist["RunAtLoad"] = settings.launchAtLogin
         do {
             try FileManager.default.createDirectory(at: plistURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let out = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)

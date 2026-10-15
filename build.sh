@@ -35,6 +35,14 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 </dict></plist>
 EOF
 codesign --force -s - "$APP"
+# Respect the app's "Launch at login" toggle: when the user has turned it off,
+# do not (re)install or restart the agent — the app reconciles the file with
+# the stored preference on its next start, and the running instance (which
+# may have been started manually) is left untouched.
+launchAtLogin="$(defaults read local.splashbar launchAtLogin 2>/dev/null)"
+if [ "$launchAtLogin" = "0" ]; then
+  echo "Launch-at-login is disabled in the app settings; skipping the local.splashbar LaunchAgent."
+else
 cat > $HOME/Library/LaunchAgents/local.splashbar.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -49,4 +57,28 @@ EOF
 plutil -lint $HOME/Library/LaunchAgents/local.splashbar.plist
 launchctl bootout gui/$(id -u)/local.splashbar 2>/dev/null || true
 launchctl bootstrap gui/$(id -u) $HOME/Library/LaunchAgents/local.splashbar.plist
+fi
+# Keep the splash agent's RunAtLoad in sync with the same preference. The app
+# is the controller of the splash executable, so the executable must not be
+# launched separately by launchd at login when the app itself does not start.
+# (The app self-heals the same key on every refresh; this covers the gap
+# between the build and the app's next start, and files written by older
+# builds.) Only the key is patched — the file holds the serve configuration,
+# so it is never removed here.
+agentPlist="$(defaults read local.splashbar agentPlistPath 2>/dev/null)"
+if [ -z "$agentPlist" ]; then
+  agentLabel="$(defaults read local.splashbar launchdLabel 2>/dev/null)"
+  [ -z "$agentLabel" ] && agentLabel="local.llm.splash"
+  agentPlist="$HOME/Library/LaunchAgents/$agentLabel.plist"
+fi
+agentPlist="${agentPlist/#\~/$HOME}"
+if [ -f "$agentPlist" ]; then
+  if [ "$launchAtLogin" = "0" ]; then runAtLoad=false; else runAtLoad=true; fi
+  if /usr/libexec/PlistBuddy -c "Print :RunAtLoad" "$agentPlist" >/dev/null 2>&1; then
+    /usr/libexec/PlistBuddy -c "Set :RunAtLoad $runAtLoad" "$agentPlist"
+  else
+    /usr/libexec/PlistBuddy -c "Add :RunAtLoad bool $runAtLoad" "$agentPlist"
+  fi
+  echo "Splash agent $agentPlist: RunAtLoad=$runAtLoad"
+fi
 echo BUILD_OK
