@@ -1,6 +1,8 @@
 import Cocoa
 
 struct SplashBarSettings {
+    /// Bump the version after each PR merge
+    static let appVersion = "0.1.0"
     /// Sentinel for the Splash installation found on the user's PATH (for
     /// example a Homebrew install). Any other value is a version that SplashBar
     /// downloads itself into `~/.splashbar/splash-versions/<version>`.
@@ -15,8 +17,14 @@ struct SplashBarSettings {
     static let defaultMaxContext = ContextSize.auto
     static let defaultAPIKey = ""
     static let defaultAllowedHost = ""
+    /// Where the Hugging Face hub cache lives. Splash reads this directory from
+    /// the HF_HUB_CACHE environment variable (via huggingface_hub); the default
+    /// is the standard location. Changing it redirects all future model
+    /// downloads without touching Splash.
+    static let defaultModelCacheDirectory = NSHomeDirectory() + "/.cache/huggingface/hub"
 
     private enum Key {
+        static let versionLabel = "versionLabel"
         static let launchdLabel = "launchdLabel"
         static let serverURL = "serverURL"
         static let agentPlistPath = "agentPlistPath"
@@ -29,9 +37,11 @@ struct SplashBarSettings {
         static let maxContext = "maxContext"
         static let apiKey = "apiKey"
         static let allowedHost = "allowedHost"
+        static let modelCacheDirectory = "modelCacheDirectory"
         static let selectedVersion = "selectedVersion"
     }
 
+    var versionLabel: String
     var launchdLabel: String
     var serverURL: URL
     var agentPlistPath: String
@@ -44,9 +54,11 @@ struct SplashBarSettings {
     var maxContext: ContextSize
     var apiKey: String
     var allowedHost: String
+    var modelCacheDirectory: String
     var selectedVersion: String
 
     init(defaults: UserDefaults = .standard) {
+        versionLabel = Self.appVersion
         launchdLabel = defaults.string(forKey: Key.launchdLabel) ?? Self.defaultLaunchdLabel
         serverURL = URL(string: defaults.string(forKey: Key.serverURL) ?? "") ?? Self.defaultServerURL
         agentPlistPath = defaults.string(forKey: Key.agentPlistPath)
@@ -60,10 +72,12 @@ struct SplashBarSettings {
         maxContext = ContextSize(rawValue: defaults.string(forKey: Key.maxContext) ?? "") ?? Self.defaultMaxContext
         apiKey = defaults.string(forKey: Key.apiKey) ?? Self.defaultAPIKey
         allowedHost = defaults.string(forKey: Key.allowedHost) ?? Self.defaultAllowedHost
+        modelCacheDirectory = defaults.string(forKey: Key.modelCacheDirectory) ?? Self.defaultModelCacheDirectory
         selectedVersion = defaults.string(forKey: Key.selectedVersion) ?? Self.globalVersion
     }
 
     func save(to defaults: UserDefaults = .standard) {
+        defaults.set(versionLabel, forKey: Key.versionLabel)
         defaults.set(launchdLabel, forKey: Key.launchdLabel)
         defaults.set(serverURL.absoluteString, forKey: Key.serverURL)
         defaults.set(agentPlistPath, forKey: Key.agentPlistPath)
@@ -76,6 +90,7 @@ struct SplashBarSettings {
         defaults.set(maxContext.rawValue, forKey: Key.maxContext)
         defaults.set(apiKey, forKey: Key.apiKey)
         defaults.set(allowedHost, forKey: Key.allowedHost)
+        defaults.set(modelCacheDirectory, forKey: Key.modelCacheDirectory)
         defaults.set(selectedVersion, forKey: Key.selectedVersion)
     }
 }
@@ -529,6 +544,24 @@ func formatBytes(_ bytes: Int) -> String {
     return String(format: "%.0f KB", Double(bytes) / 1024)
 }
 
+/// The total size of a folder's regular files, for the backup progress bar.
+/// Hidden files are included on purpose: the model cache keeps its references
+/// in dot directories and all of them belong into a backup.
+func folderSize(of url: URL) -> Int64 {
+    let fileManager = FileManager.default
+    guard let enumerator = fileManager.enumerator(
+        at: url,
+        includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]
+    ) else { return 0 }
+    var total: Int64 = 0
+    while let item = enumerator.nextObject() as? URL {
+        guard let values = try? item.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
+              values.isRegularFile == true else { continue }
+        total += Int64(values.fileSize ?? 0)
+    }
+    return total
+}
+
 // Localizes a key from the app's .lproj resources. The development language is
 // German; if the user's system language has no translation file, AppKit falls
 // back to it automatically (see CFBundleDevelopmentRegion in Info.plist).
@@ -536,7 +569,65 @@ func formatBytes(_ bytes: Int) -> String {
 func tr(_ key: String, _ args: CVarArg...) -> String {
     let format = Bundle.main.localizedString(forKey: key, value: key, table: nil)
     guard !args.isEmpty else { return format }
-    return String(format: format, locale: Locale.current, arguments: args)
+    // Never hand the format string to Core Foundation: on macOS 27,
+    // String(format:locale:arguments:) mangles String arguments (%s reads a
+    // dangling C buffer, so it prints garbage or crashes with
+    // EXC_BAD_ACCESS). The backup confirm dialog hit exactly that.
+    return formatSwift(format, args)
+}
+
+/// Substitutes %s, %@, %d, %ld, %llu, %f, %lf and their N$ positional
+/// forms, in pure Swift. The N$ form lets one value appear twice ("~26.5 GB
+/// ... needs ~26.5 GB of free space") without duplicating the argument.
+func formatSwift(_ format: String, _ args: [CVarArg]) -> String {
+    var out = ""
+    var seq = 0
+    var i = format.startIndex
+    while i < format.endIndex {
+        let c = format[i]
+        if c != "%" {
+            out.append(c)
+            i = format.index(after: i)
+            continue
+        }
+        var j = format.index(after: i)
+        var position: Int?
+        if j < format.endIndex, format[j].isNumber {
+            var digits = ""
+            while j < format.endIndex, format[j].isNumber {
+                digits.append(format[j])
+                j = format.index(after: j)
+            }
+            if j < format.endIndex, format[j] == "$" {
+                position = Int(digits)
+                j = format.index(after: j)
+            }
+        }
+        while j < format.endIndex, format[j].isNumber
+                || (format[j] == "." && format.index(after: j) < format.endIndex) {
+            j = format.index(after: j)
+        }
+        guard j < format.endIndex, "s@dflluXx".contains(format[j]) else {
+            out.append("%")  // Not a directive (e.g. "100% of") — keep it.
+            i = format.index(after: i)
+            continue
+        }
+        let index = position.flatMap { $0 - 1 }
+            .flatMap { $0 >= 0 && $0 < args.count ? $0 : nil }
+            ?? (seq < args.count ? seq : nil)
+        if position == nil { seq += 1 }
+        if let index { out.append(renderArgument(args[index], format[j])) }
+        i = format.index(after: j)
+    }
+    return out
+}
+
+private func renderArgument(_ arg: CVarArg, _ conversion: Character) -> String {
+    if let s = arg as? String { return s }
+    if String(conversion) == "f" || String(conversion) == "lf", let d = arg as? Double {
+        return d.formatted()
+    }
+    return "\(arg)"
 }
 
 func availableSplashReleases() -> [SplashRelease] {
@@ -669,7 +760,7 @@ func shellQuote(_ value: String) -> String {
 }
 
 func serverAddress(for url: URL) -> String {
-    let host = url.host ?? "Server"
+    let host = url.host() ?? "Server"
     let displayHost = host.contains(":") ? "[\(host)]" : host
     let defaultPort: Int? = switch url.scheme?.lowercased() {
     case "http": 80
@@ -726,6 +817,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let statusLine = NSMenuItem(title: tr("status.checking"), action: nil, keyEquivalent: "")
     let modelLine = NSMenuItem(title: tr("status.modelchecking"), action: nil, keyEquivalent: "")
     let memLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    let appVersionLine = NSMenuItem(title: "SplashBar v" + SplashBarSettings.appVersion, action: nil, keyEquivalent: "")
     let versionLine = NSMenuItem(title: tr("status.versionchecking"), action: nil, keyEquivalent: "")
     var startItem: NSMenuItem!
     var stopItem: NSMenuItem!
@@ -788,6 +880,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusLine.isEnabled = false
         modelLine.isEnabled = false
         memLine.isEnabled = false
+        menu.addItem(appVersionLine)
         menu.addItem(statusLine)
         menu.addItem(modelLine)
         menu.addItem(memLine)
@@ -799,6 +892,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         _ = add(menu, tr("menu.chat"), #selector(openChat))
         _ = add(menu, tr("menu.log"), #selector(openLog))
+        _ = add(menu, tr("menu.backup"), #selector(backupModel))
+        _ = add(menu, tr("menu.restore"), #selector(restoreModel))
         _ = add(menu, tr("menu.settings"), #selector(configure))
         versionItem = add(menu, tr("menu.version"), #selector(chooseSplashVersion))
         menu.addItem(.separator())
@@ -832,7 +927,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             var memoryGB: Double = 0
             var model = ""
             if !pid.isEmpty {
-                let healthURL = currentSettings.serverURL
+                // The server may be configured for a non-loopback host (e.g.
+                // 0.0.0.0 with an API key), but the probe must always reach
+                // loopback: keep the scheme and port of the configured URL,
+                // force the host to 127.0.0.1.
+                var healthComponents = URLComponents(url: currentSettings.serverURL, resolvingAgainstBaseURL: false)
+                healthComponents?.host = "127.0.0.1"
+                let healthURL = (healthComponents?.url ?? currentSettings.serverURL)
                     .appendingPathComponent("v1")
                     .appendingPathComponent("models")
                 var probeArguments = ["-s", "-m", shellQuote(String(currentSettings.requestTimeout))]
@@ -1000,6 +1101,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let otherModelField = NSComboBox()
         let customModelField = NSTextField(string: "")
         let additionalPathField = NSTextField(string: settings.additionalModelsPath)
+        let modelCacheField = NSTextField(string: settings.modelCacheDirectory)
         let urlField = NSTextField(string: settings.serverURL.absoluteString)
         let agentLabelField = NSTextField(string: settings.launchdLabel)
         let plistField = NSTextField(string: settings.agentPlistPath)
@@ -1045,7 +1147,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             (tr("settings.field.refresh"), refreshField),
             (tr("settings.field.timeout"), timeoutField),
             (tr("settings.field.idle"), idleField),
-            (tr("settings.field.addpath"), additionalPathField)
+            (tr("settings.field.addpath"), additionalPathField),
+            (tr("settings.field.modelcache"), modelCacheField)
         ]
 
         let form = NSView(frame: NSRect(x: 0, y: 0, width: 720, height: CGFloat(fields.count) * 38))
@@ -1078,6 +1181,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let requestedAPIKey = apiKeyField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let requestedAllowedHost = allowedHostField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let additionalModelsPath = additionalPathField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelCacheDirectory = modelCacheField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let serverURL = validatedServerURL(serverText),
               requestedModel.isEmpty || validatedModelID(requestedModel),
               agentLabelField.stringValue.range(of: #"^[A-Za-z0-9][A-Za-z0-9._-]*$"#, options: .regularExpression) != nil,
@@ -1109,17 +1213,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updated.maxContext = requestedContext
         updated.apiKey = requestedAPIKey
         updated.allowedHost = requestedAllowedHost
+        updated.modelCacheDirectory = modelCacheDirectory.isEmpty
+            ? SplashBarSettings.defaultModelCacheDirectory
+            : modelCacheDirectory
 
+        // The URL currently stored in the settings. When it differs from the
+        // validated one, the LaunchAgent's --port argument is rewritten and a
+        // running server is restarted so the new address takes effect.
+        let currentServerUrl = settings.serverURL
         let agentArguments = readAgentPlist(at: updated.agentPlistPath)?["ProgramArguments"] as? [String] ?? []
         let currentAgentModel = modelID(in: agentArguments)
+        let serverUrlChanged = serverURL != currentServerUrl
         let modelChanged = !requestedModel.isEmpty && requestedModel != currentAgentModel
         let currentAgentContext = contextSize(in: agentArguments) ?? .auto
         let contextChanged = requestedContext != currentAgentContext
         let apiKeyChanged = requestedAPIKey != (argumentValue("--api-key", in: agentArguments) ?? "")
         let allowedHostChanged = requestedAllowedHost != (argumentValue("--allowed-host", in: agentArguments) ?? "")
+        // The cache directory lives in the plist's EnvironmentVariables (HF_HUB_CACHE).
+        let agentEnvironment = readAgentPlist(at: updated.agentPlistPath)?["EnvironmentVariables"] as? [String: Any] ?? [:]
+        let modelCacheChanged = agentEnvironment["HF_HUB_CACHE"] as? String != expandedPath(updated.modelCacheDirectory)
 
-        if modelChanged || contextChanged || apiKeyChanged || allowedHostChanged {
-            guard isLocalServerURL(serverURL) else {
+        if serverUrlChanged || modelChanged || contextChanged || apiKeyChanged || allowedHostChanged || modelCacheChanged {
+            guard isValidServerUrl(serverURL, apiKey: requestedAPIKey) else {
                 showSettingsError(tr("settings.error.agent"))
                 return
             }
@@ -1175,9 +1290,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             && !text.split(separator: "/").contains("..")
     }
 
-    func isLocalServerURL(_ url: URL) -> Bool {
-        guard let host = url.host?.lowercased() else { return false }
-        return ["localhost", "127.0.0.1", "::1"].contains(host)
+    /// Validates the server URL for the LaunchAgent-based features.
+    /// Loopback addresses are always allowed; 0.0.0.0 binds to every
+    /// interface, so it is only accepted together with an API key — a
+    /// keyless server must never be reachable from the whole network.
+    func isValidServerUrl(_ url: URL, apiKey: String) -> Bool {
+        var host = (url.host ?? "").lowercased()
+        host = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        if ["localhost", "127.0.0.1", "::1"].contains(host) { return true }
+        return host == "0.0.0.0" && !apiKey.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     func applyServeArguments(
@@ -1230,6 +1351,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             arguments += ["--port", port]
         }
 
+        let host = String(updatedSettings.serverURL.host() ?? "127.0.0.1")
+        if let index = arguments.firstIndex(of: "--host"), arguments.indices.contains(index + 1) {
+            arguments[index + 1] = host
+        } else if let index = arguments.firstIndex(where: { $0.hasPrefix("--host=") }) {
+            arguments[index] = "--host=\(host)"
+        } else {
+            arguments += ["--host", host]
+        }
+
         // A cleared model field leaves any existing --model argument untouched.
         if !selectedModel.isEmpty {
             if let index = arguments.firstIndex(of: "--model"), arguments.indices.contains(index + 1) {
@@ -1270,6 +1400,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         plist["ProcessType"] = "Interactive"
         plist["StandardOutPath"] = expandedPath(updatedSettings.logPath)
         plist["StandardErrorPath"] = expandedPath(updatedSettings.logPath)
+
+        // Splash resolves its Hugging Face cache through huggingface_hub, which
+        // honors HF_HUB_CACHE. Pointing it at the configured directory lets the
+        // user keep (or move) model downloads to a visible home folder without
+        // touching Splash. Create the directory so a fresh location works on
+        // the very next model load.
+        var environment = plist["EnvironmentVariables"] as? [String: String] ?? [:]
+        environment["HF_HUB_CACHE"] = expandedPath(updatedSettings.modelCacheDirectory)
+        plist["EnvironmentVariables"] = environment
+        try? FileManager.default.createDirectory(
+            atPath: expandedPath(updatedSettings.modelCacheDirectory),
+            withIntermediateDirectories: true
+        )
 
         let oldTarget = "gui/\(uid)/\(previousSettings.launchdLabel)"
         let newTarget = "gui/\(uid)/\(updatedSettings.launchdLabel)"
@@ -1882,6 +2025,332 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         versionDownloadActive = false
         versionDownloadCancelled = true
         return true
+    }
+
+    // MARK: - Model backup and restore (emergency fallback)
+    //
+    // The model weights live in the Hugging Face cache (by default
+    // ~/.cache/huggingface/hub); the Application Support tree only holds
+    // references to it. If the user deletes that cache, the only way back is
+    // a fresh multi-GB download. These two menu commands keep a local tar
+    // archive in ~/SplashBar-Backups so the model can come back offline.
+    // The restore is transactional: the existing cache is moved aside first
+    // and put back if the archive does not extract cleanly.
+
+    private let backupLock = NSLock()
+    private var backupRunning = false
+    private var backupCancelled = false
+    private var backupProgressWindow: NSWindow?
+    private var backupProgressText: NSTextField?
+    private var backupProgressBar: NSProgressIndicator?
+    private var backupProgressSpinner: NSProgressIndicator?
+    private var backupCancelButton: NSButton?
+    private var backupCloseButton: NSButton?
+    private var backupProgressPoller: Timer?
+
+    func modelBackupsDirectory() -> URL {
+        let directory = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("SplashBar-Backups", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+
+    /// Existing backup archives, newest first. The file names embed the
+    /// creation timestamp (models-<unixtime>.tar), so a lexical sort is a
+    /// chronological sort.
+    func listModelBackups() -> [URL] {
+        let directory = modelBackupsDirectory()
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil
+        )) ?? []
+        return files
+            .filter { $0.pathExtension == "tar" }
+            .sorted { $0.lastPathComponent > $1.lastPathComponent }
+    }
+
+    /// The Hugging Face cache directory the server uses.
+    func currentModelCacheURL() -> URL {
+        URL(fileURLWithPath: expandedPath(settings.modelCacheDirectory))
+    }
+
+    func setBackupRunning(_ running: Bool) {
+        backupLock.lock()
+        defer { backupLock.unlock() }
+        backupRunning = running
+        if running { backupCancelled = false }
+    }
+
+    func isBackupRunning() -> Bool {
+        backupLock.lock()
+        defer { backupLock.unlock() }
+        return backupRunning
+    }
+
+    func claimBackupCancellation() -> Bool {
+        backupLock.lock()
+        defer { backupLock.unlock() }
+        guard backupRunning else { return false }
+        backupCancelled = true
+        return true
+    }
+
+    func isBackupCancelled() -> Bool {
+        backupLock.lock()
+        defer { backupLock.unlock() }
+        return backupCancelled
+    }
+
+    /// Creates a tar archive of the model cache in ~/SplashBar-Backups.
+    @objc func backupModel() {
+        let cache = currentModelCacheURL()
+        var isDirectory: ObjCBool = false
+        let totalBytes = folderSize(of: cache)
+        guard FileManager.default.fileExists(atPath: cache.path, isDirectory: &isDirectory),
+              isDirectory.boolValue, totalBytes > 0 else {
+            let alert = NSAlert()
+            alert.messageText = tr("backup.error.empty")
+            alert.informativeText = tr("backup.error.empty.detail", cache.path)
+            runClosableAlert(alert)
+            return
+        }
+
+        let confirm = NSAlert()
+        confirm.messageText = tr("backup.title")
+        confirm.informativeText = tr("backup.confirm", formatBytes(Int(totalBytes)), cache.path)
+        confirm.addButton(withTitle: tr("backup.start"))
+        confirm.addButton(withTitle: tr("settings.cancel"))
+        guard runClosableAlert(confirm) == .alertFirstButtonReturn else { return }
+
+        let destination = modelBackupsDirectory()
+            .appendingPathComponent("models-\(Int(Date().timeIntervalSince1970)).tar")
+        setBackupRunning(true)
+        showBackupProgress(tr("backup.progress", cache.lastPathComponent), totalBytes: totalBytes, destination: destination)
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            let result = runCommand(
+                "/usr/bin/tar",
+                ["-cf", destination.path, "-C", cache.deletingLastPathComponent().path, cache.lastPathComponent],
+                isCancelled: { self.isBackupCancelled() }
+            )
+            let cancelled = self.isBackupCancelled()
+            self.setBackupRunning(false)
+            self.backupProgressPoller?.invalidate()
+            self.backupProgressPoller = nil
+            DispatchQueue.main.async {
+                self.backupProgressSpinner?.stopAnimation(nil)
+                self.backupProgressSpinner?.isHidden = true
+                self.backupProgressText?.stringValue = self.backupResultText(
+                    result: result,
+                    cancelled: cancelled,
+                    success: tr("backup.done", destination.path),
+                    failure: tr("backup.error"),
+                    unknown: tr("backup.error.unknown")
+                )
+                self.backupCancelButton?.isHidden = true
+                self.backupCloseButton?.isHidden = false
+            }
+        }
+    }
+
+    /// Restores the model cache from a backup archive, transactionally.
+    @objc func restoreModel() {
+        let cache = currentModelCacheURL()
+        let backups = listModelBackups()
+        guard !backups.isEmpty else {
+            let alert = NSAlert()
+            alert.messageText = tr("restore.error.none")
+            alert.informativeText = tr("restore.error.none.detail", modelBackupsDirectory().path)
+            runClosableAlert(alert)
+            return
+        }
+
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 0, height: 0), pullsDown: false)
+        popup.addItems(withTitles: backups.map { $0.lastPathComponent })
+        let accessory = NSView(frame: NSRect(x: 0, y: 0, width: 500, height: 40))
+        let label = NSTextField(labelWithString: tr("restore.field"))
+        label.frame = NSRect(x: 0, y: 8, width: 150, height: 24)
+        popup.frame = NSRect(x: 155, y: 8, width: 335, height: 26)
+        accessory.addSubview(label)
+        accessory.addSubview(popup)
+
+        let alert = NSAlert()
+        alert.messageText = tr("restore.title")
+        alert.informativeText = tr("restore.info", cache.path)
+        alert.accessoryView = accessory
+        alert.addButton(withTitle: tr("restore.start"))
+        alert.addButton(withTitle: tr("settings.cancel"))
+        guard runClosableAlert(alert) == .alertFirstButtonReturn else { return }
+        let index = popup.indexOfSelectedItem
+        guard index >= 0, index < backups.count else { return }
+        let archive = backups[index]
+
+        let parent = cache.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+
+        // Move the existing cache aside before extracting, so a failed
+        // extraction can put it back and never leaves a half-restore behind.
+        var asideURL: URL?
+        if FileManager.default.fileExists(atPath: cache.path) {
+            let stamp = Int(Date().timeIntervalSince1970)
+            asideURL = parent.appendingPathComponent(cache.lastPathComponent + "-\(stamp)-old", isDirectory: true)
+            do {
+                try FileManager.default.moveItem(at: cache, to: asideURL!)
+            } catch {
+                let moveAlert = NSAlert()
+                moveAlert.messageText = tr("restore.error")
+                moveAlert.informativeText = error.localizedDescription
+                runClosableAlert(moveAlert)
+                return
+            }
+        }
+
+        setBackupRunning(true)
+        showBackupProgress(tr("restore.progress", archive.lastPathComponent), totalBytes: nil, destination: nil)
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            let result = runCommand(
+                "/usr/bin/tar",
+                ["-xf", archive.path, "-C", parent.path],
+                isCancelled: { self.isBackupCancelled() }
+            )
+            let cancelled = self.isBackupCancelled()
+            let extracted = FileManager.default.fileExists(atPath: cache.path)
+            var failureDetail: String?
+            if result.status != 0 || !extracted {
+                // Roll the transaction back: remove the partial extraction and
+                // move the old cache back into place.
+                try? FileManager.default.removeItem(at: cache)
+                if let asideURL {
+                    do {
+                        try FileManager.default.moveItem(at: asideURL, to: cache)
+                    } catch {
+                        failureDetail = error.localizedDescription
+                    }
+                }
+            } else if let asideURL {
+                try? FileManager.default.removeItem(at: asideURL)
+            }
+            self.setBackupRunning(false)
+            self.backupProgressPoller?.invalidate()
+            self.backupProgressPoller = nil
+            DispatchQueue.main.async {
+                self.backupProgressSpinner?.stopAnimation(nil)
+                self.backupProgressSpinner?.isHidden = true
+                self.backupProgressBar?.isHidden = true
+                if let failureDetail {
+                    self.backupProgressText?.stringValue = tr("restore.error", failureDetail)
+                } else {
+                    self.backupProgressText?.stringValue = self.backupResultText(
+                        result: result,
+                        cancelled: cancelled,
+                        success: tr("restore.done"),
+                        failure: tr("restore.error"),
+                        unknown: tr("restore.error.unknown")
+                    )
+                }
+                self.backupCancelButton?.isHidden = true
+                self.backupCloseButton?.isHidden = false
+            }
+        }
+    }
+
+    /// Maps a finished command onto the progress window's result text: a
+    /// user cancellation wins over the (expected) non-zero exit status.
+    func backupResultText(result: CommandResult, cancelled: Bool, success: String, failure: String, unknown: String) -> String {
+        if cancelled {
+            return tr("backup.cancelled")
+        }
+        guard result.status == 0 else {
+            return tr(failure, result.output.isEmpty ? unknown : result.output)
+        }
+        return success
+    }
+
+    /// The shared progress window for backup and restore. `totalBytes` of
+    /// `destination` is polled for the bar; `nil` shows an indeterminate bar
+    /// instead (the restore has no reliable total).
+    func showBackupProgress(_ text: String, totalBytes: Int64?, destination: URL?) {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 210),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = tr("window.title")
+        window.isReleasedWhenClosed = false
+
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 540, height: 210))
+        let label = NSTextField(wrappingLabelWithString: text)
+        label.frame = NSRect(x: 24, y: 88, width: 492, height: 100)
+        label.font = .systemFont(ofSize: 14)
+        content.addSubview(label)
+
+        let bar = NSProgressIndicator(frame: NSRect(x: 24, y: 52, width: 400, height: 20))
+        bar.style = .bar
+        bar.isIndeterminate = totalBytes == nil || totalBytes == 0
+        bar.minValue = 0
+        bar.maxValue = Double(max(totalBytes ?? 1, 1))
+        bar.doubleValue = 0
+        content.addSubview(bar)
+
+        let spinner = NSProgressIndicator(frame: NSRect(x: 436, y: 46, width: 20, height: 20))
+        spinner.style = .spinning
+        spinner.isIndeterminate = true
+        spinner.startAnimation(nil)
+        content.addSubview(spinner)
+
+        let cancelButton = NSButton(title: tr("version.cancel"), target: self, action: #selector(cancelBackupProgress))
+        cancelButton.frame = NSRect(x: 24, y: 18, width: 82, height: 28)
+        cancelButton.bezelStyle = .rounded
+        content.addSubview(cancelButton)
+
+        let closeButton = NSButton(title: tr("settings.close"), target: self, action: #selector(closeBackupProgress))
+        closeButton.frame = NSRect(x: 426, y: 18, width: 82, height: 28)
+        closeButton.bezelStyle = .rounded
+        closeButton.isHidden = true
+        content.addSubview(closeButton)
+
+        window.contentView = content
+        backupProgressWindow = window
+        backupProgressText = label
+        backupProgressBar = bar
+        backupProgressSpinner = spinner
+        backupCancelButton = cancelButton
+        backupCloseButton = closeButton
+        window.center()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+
+        if let destination {
+            backupProgressPoller = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+                guard let self, self.isBackupRunning() else {
+                    timer.invalidate()
+                    return
+                }
+                let size = (try? destination.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+                self.backupProgressBar?.doubleValue = Double(min(Int64(size), totalBytes ?? Int64(size)))
+            }
+        }
+    }
+
+    @objc func cancelBackupProgress() {
+        guard claimBackupCancellation() else { return }
+        backupCancelButton?.isHidden = true
+        backupProgressText?.stringValue = tr("backup.cancelling")
+    }
+
+    @objc func closeBackupProgress() {
+        backupProgressPoller?.invalidate()
+        backupProgressPoller = nil
+        backupProgressWindow?.close()
+        backupProgressWindow = nil
+        backupProgressText = nil
+        backupProgressBar = nil
+        backupProgressSpinner = nil
+        backupCancelButton = nil
+        backupCloseButton = nil
     }
 
     /// Downloads, verifies and extracts a release into
