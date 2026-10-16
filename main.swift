@@ -1,8 +1,10 @@
 import Cocoa
 
 struct SplashBarSettings {
-    /// Bump the version after each PR merge
-    static let appVersion = "0.1.1"
+    /// Read from Info.plist at runtime (build.sh sets CFBundleShortVersionString);
+    /// the fallback covers running the binary outside of a bundle (e.g. from Xcode).
+    static let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        ?? "0.1.1"
     /// Sentinel for the Splash installation found on the user's PATH (for
     /// example a Homebrew install). Any other value is a version that SplashBar
     /// downloads itself into `~/.splashbar/splash-versions/<version>`.
