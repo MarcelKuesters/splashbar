@@ -42,7 +42,7 @@ codesign --force -s - "$APP"
 # the stored preference on its next start, and the running instance (which
 # may have been started manually) is left untouched.
 install="${SPLASHBAR_INSTALL:-1}"
-launchAtLogin="$(defaults read local.splashbar launchAtLogin 2>/dev/null)"
+launchAtLogin="$(defaults read local.splashbar launchAtLogin 2>/dev/null || true)"
 if [ "$launchAtLogin" = "0" ]; then
   echo "Launch-at-login is disabled in the app settings; skipping the local.splashbar LaunchAgent."
 elif [ "$install" != "1" ]; then
@@ -70,9 +70,9 @@ fi
 # between the build and the app's next start, and files written by older
 # builds.) Only the key is patched — the file holds the serve configuration,
 # so it is never removed here.
-agentPlist="$(defaults read local.splashbar agentPlistPath 2>/dev/null)"
+agentPlist="$(defaults read local.splashbar agentPlistPath 2>/dev/null || true)"
 if [ -z "$agentPlist" ]; then
-  agentLabel="$(defaults read local.splashbar launchdLabel 2>/dev/null)"
+  agentLabel="$(defaults read local.splashbar launchdLabel 2>/dev/null || true)"
   [ -z "$agentLabel" ] && agentLabel="local.llm.splash"
   agentPlist="$HOME/Library/LaunchAgents/$agentLabel.plist"
 fi
