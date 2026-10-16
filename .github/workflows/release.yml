@@ -21,7 +21,7 @@ jobs:
         run: |
           hdiutil create -volname SplashBar -srcfolder "$GITHUB_WORKSPACE/SplashBar.app" \
             -format UDZO -o SplashBar.dmg
-          shasum -a 256 SplashBar.dmg SplashBar.dmg.sha256
+          shasum -a 256 SplashBar.dmg > SplashBar.dmg.sha256
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
