@@ -5,7 +5,7 @@ set -e
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP=/Applications/SplashBar.app
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-swiftc -O -swift-version 5 -o "$APP/Contents/MacOS/SplashBar" "$SRC/main.swift" -framework Cocoa
+swiftc -O -swift-version 5 -target arm64-apple-macos26.4 -o "$APP/Contents/MacOS/SplashBar" "$SRC/main.swift" -framework Cocoa
 # Localized resources: Resources/<code>.lproj/Localizable.strings
 rm -rf "$APP/Contents/Resources/"*.lproj
 cp -R "$SRC/Resources/"*.lproj "$APP/Contents/Resources/"

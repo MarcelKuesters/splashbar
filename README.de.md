@@ -53,7 +53,7 @@ gebaut mit dem Swift-Toolkit, das macOS mitliefert.
 
 ## Voraussetzungen
 
-- macOS 14+
+- macOS 26.4+ (entspricht der Splash-Engine)
 - [Splash](https://github.com/incoai/splash) installiert und als launchd-Dienst
   `local.llm.splash` laufend, Chat-Seite auf Port 8080 — oder wähle eines der
   stabilen GitHub-Releases im Versionsmenü; SplashBar verwaltet dann eine
