@@ -3,7 +3,9 @@ set -e
 # The source lives next to this script, regardless of where the checkout is
 # (e.g. ~/github/splashbar on this machine, any clone on a CI runner).
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP=/Applications/SplashBar.app
+# CI sets SPLASHBAR_APP to a writable location (the runner's workspace);
+# locally the default /Applications is kept.
+APP="${SPLASHBAR_APP:-/Applications/SplashBar.app}"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 swiftc -O -swift-version 5 -target arm64-apple-macos26.4 -o "$APP/Contents/MacOS/SplashBar" "$SRC/main.swift" -framework Cocoa
 # Localized resources: Resources/<code>.lproj/Localizable.strings
@@ -19,7 +21,7 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
  <key>CFBundleExecutable</key><string>SplashBar</string>
  <key>CFBundleIconFile</key><string>AppIcon</string>
  <key>CFBundlePackageType</key><string>APPL</string>
- <key>CFBundleShortVersionString</key><string>1.0</string>
+ <key>CFBundleShortVersionString</key><string>1.0.0</string>
  <key>CFBundleDevelopmentRegion</key><string>de</string>
  <key>CFBundleLocalizations</key><array>
   <string>de</string>
@@ -30,7 +32,7 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
   <string>zh</string>
   <string>ru</string>
  </array>
- <key>LSMinimumSystemVersion</key><string>14.0</string>
+ <key>LSMinimumSystemVersion</key><string>26.4</string>
  <key>LSUIElement</key><true/>
 </dict></plist>
 EOF
@@ -39,9 +41,12 @@ codesign --force -s - "$APP"
 # do not (re)install or restart the agent — the app reconciles the file with
 # the stored preference on its next start, and the running instance (which
 # may have been started manually) is left untouched.
+install="${SPLASHBAR_INSTALL:-1}"
 launchAtLogin="$(defaults read local.splashbar launchAtLogin 2>/dev/null)"
 if [ "$launchAtLogin" = "0" ]; then
   echo "Launch-at-login is disabled in the app settings; skipping the local.splashbar LaunchAgent."
+elif [ "$install" != "1" ]; then
+  echo "SPLASHBAR_INSTALL=0 — skipping LaunchAgent install (CI)."
 else
 cat > $HOME/Library/LaunchAgents/local.splashbar.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

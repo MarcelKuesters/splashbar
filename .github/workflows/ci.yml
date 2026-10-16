@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    # Needs an SDK >= 26.4 (build.sh pins -target arm64-apple-macos26.4);
+    # macos-latest always points at the newest image, which satisfies that.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build app
+        env:
+          # Build into the runner's workspace, never /Applications.
+          SPLASHBAR_APP: ${{ github.workspace }}/SplashBar.app
+          # Do not install/restart LaunchAgents on a throwaway runner.
+          SPLASHBAR_INSTALL: "0"
+        run: bash build.sh

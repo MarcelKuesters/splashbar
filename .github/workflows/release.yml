@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build app
+        env:
+          SPLASHBAR_APP: ${{ github.workspace }}/SplashBar.app
+          SPLASHBAR_INSTALL: "0"
+        run: bash build.sh
+      - name: Package DMG
+        run: |
+          hdiutil create -volname SplashBar -srcfolder "$GITHUB_WORKSPACE/SplashBar.app" \
+            -format UDZO -o SplashBar.dmg
+          shasum -a 256 SplashBar.dmg SplashBar.dmg.sha256
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            SplashBar.dmg
+            SplashBar.dmg.sha256
+          body: |
+            **Install:** open the DMG and drag **SplashBar** into **Applications**.
+
+            **First launch:** this build is ad-hoc signed only (no Apple
+            Developer account), so macOS Gatekeeper shows a warning the first
+            time. Right-click the app in Applications → **Open** → confirm
+            once; from then on it starts normally.
+
+            Requires **macOS 26.4+** and a local
+            [Splash](https://github.com/incoai/splash) server (or pick a
+            stable release in the app's version menu).
