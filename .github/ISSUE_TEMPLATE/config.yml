@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Splash (the inference server)
+    url: https://github.com/incoai/splash/issues
+    about: Problems with Splash itself (model loading, inference, kernels) belong in the Splash repo, not here.
+  - name: Splash showcase thread
+    url: https://github.com/incoai/splash/issues/363
+    about: Share how you use SplashBar with Splash in the community showcase.
