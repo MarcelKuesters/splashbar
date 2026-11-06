@@ -48,6 +48,16 @@ seven languages (de, en, fr, es, ja, zh, ru).
 No dependencies, no installer, no daemon of its own — one Swift file, built
 with the Swift toolchain that ships with macOS.
 
+### How it relates to Splash's own menu bar app
+
+Splash [is adding its own menu bar item](https://github.com/incoai/splash/pull/699):
+a native menu with the model's totals, start/stop, and the coding agents.
+SplashBar is a separate app that needs none of the Splash UI — it only drives
+the `splash` executable and opens the chat page in your browser. Use both, or
+just SplashBar if you prefer one compact native menu with the four-state
+status dot, the real memory footprint, version switching, and model
+backup/restore.
+
 ## Requirements
 
 - macOS 26.4+ (matching the Splash engine)
