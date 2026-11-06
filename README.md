@@ -50,8 +50,10 @@ with the Swift toolchain that ships with macOS.
 
 ### How it relates to Splash's own menu bar app
 
-Splash [is adding its own menu bar item](https://github.com/incoai/splash/pull/699):
-a native menu with the model's totals, start/stop, and the coding agents.
+Splash's own macOS app [is getting a native menu bar menu](https://github.com/incoai/splash/pull/699):
+an open pull request replaces its window-style panel with AppKit's
+`NSStatusItem` + `NSMenu` — the standard macOS menu, with drag-to-select and
+keyboard navigation — and adds a Start item for the last-picked (or only) model.
 SplashBar is a separate app that needs none of the Splash UI — it only drives
 the `splash` executable and opens the chat page in your browser. Use both, or
 just SplashBar if you prefer one compact native menu with the four-state

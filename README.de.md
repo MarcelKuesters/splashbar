@@ -53,9 +53,11 @@ gebaut mit dem Swift-Toolkit, das macOS mitliefert.
 
 ### Verhältnis zu Splashs eigener Menüleisten-App
 
-Splash [bekommt einen eigenen Menüleisten-Eintrag](https://github.com/incoai/splash/pull/699):
-ein natives Menü mit den Kennzahlen des Modells, Start/Stoppen und den
-Coding Agents. SplashBar ist eine eigenständige App, die dafür nichts von der
+Die Splash-App selbst [bekommt ein natives Menüleisten-Menü](https://github.com/incoai/splash/pull/699):
+Ein offener Pull-Request ersetzt ihr fensterbasiertes Panel durch Appkits
+`NSStatusItem` + `NSMenu` — das Standard-macOS-Menü, mit Drag-Auswahl und
+Tastaturnavigation — und ergänzt ein Start-Element für das zuletzt gewählte
+(oder einzige) Modell. SplashBar ist eine eigenständige App, die dafür nichts von der
 Splash-Oberfläche braucht — sie steuert nur die `splash`-Ausführbare und öffnet
 die Chat-Seite im Browser. Nutze beides, oder nur SplashBar, wenn du ein
 kompaktes natives Menü mit dem vierstufigen Status-Punkt, dem echten
