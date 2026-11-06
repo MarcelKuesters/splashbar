@@ -51,6 +51,16 @@ Systemsprache und sind in sieben Sprachen lokalisiert (de, en, fr, es, ja, zh, r
 Keine Abhängigkeiten, kein Installer, kein eigener Daemon — eine Swift-Datei,
 gebaut mit dem Swift-Toolkit, das macOS mitliefert.
 
+### Verhältnis zu Splashs eigener Menüleisten-App
+
+Splash [bekommt einen eigenen Menüleisten-Eintrag](https://github.com/incoai/splash/pull/699):
+ein natives Menü mit den Kennzahlen des Modells, Start/Stoppen und den
+Coding Agents. SplashBar ist eine eigenständige App, die dafür nichts von der
+Splash-Oberfläche braucht — sie steuert nur die `splash`-Ausführbare und öffnet
+die Chat-Seite im Browser. Nutze beides, oder nur SplashBar, wenn du ein
+kompaktes natives Menü mit dem vierstufigen Status-Punkt, dem echten
+Speicherbezug, dem Versionswechsel und der Modell-Sicherung bevorzugst.
+
 ## Voraussetzungen
 
 - macOS 26.4+ (entspricht der Splash-Engine)
