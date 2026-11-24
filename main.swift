@@ -184,28 +184,20 @@ struct LocalModel {
 
 final class ModelSelectionCoordinator: NSObject, NSTextFieldDelegate {
     let compatibleField: NSComboBox
-    let otherField: NSComboBox
     let customField: NSTextField
 
-    init(compatibleField: NSComboBox, otherField: NSComboBox, customField: NSTextField) {
+    init(compatibleField: NSComboBox, customField: NSTextField) {
         self.compatibleField = compatibleField
-        self.otherField = otherField
         self.customField = customField
     }
 
     @objc func modelListChanged(_ sender: NSComboBox) {
-        if sender === compatibleField {
-            clearSelection(in: otherField)
-            customField.stringValue = ""
-        } else {
-            clearSelection(in: compatibleField)
-            customField.stringValue = ""
-        }
+        clearSelection(in: compatibleField)
+        customField.stringValue = ""
     }
 
     func controlTextDidChange(_ notification: Notification) {
         clearSelection(in: compatibleField)
-        clearSelection(in: otherField)
     }
 
     private func clearSelection(in field: NSComboBox) {
@@ -313,7 +305,32 @@ func localModels(in rootPath: String, source: String) -> [LocalModel] {
             let hasSnapshot = ((try? FileManager.default.contentsOfDirectory(atPath: snapshots.path)) ?? []).contains {
                 modelPayloadExists(in: snapshots.appendingPathComponent($0, isDirectory: true))
             }
-            if hasSnapshot { add("\(components[0])/\(components.dropFirst().joined(separator: "--"))") }
+            if hasSnapshot {
+                let bareID = "\(components[0])/\(components.dropFirst().joined(separator: "--"))"
+                add(bareID)
+                // Derive the variant suffix from the snapshot's GGUF names
+                // ("Qwen3.6-35B-A3B-UD-Q4_K_M.gguf" -> UD-Q4_K_M), so the
+                // picker offers the same ID Splash installed under.
+                let repoName = components.dropFirst().joined(separator: "--")
+                var base = repoName
+                for suffix in ["-GGUF", "-gguf"] where base.hasSuffix(suffix) {
+                    base = String(base.dropLast(suffix.count))
+                }
+                for snapshot in ((try? FileManager.default.contentsOfDirectory(atPath: snapshots.path)) ?? []) {
+                    let files = (try? FileManager.default.contentsOfDirectory(atPath: snapshots.appendingPathComponent(snapshot, isDirectory: true).path)) ?? []
+                    for file in files where file.hasSuffix(".gguf") {
+                        let stem = String(file.dropLast(5))
+                        // Vision projectors ("…-mmproj-BF16.gguf") are not
+                        // quant variants; Splash excludes them from target
+                        // selection, so they must not become :VARIANT ids.
+                        guard stem.lowercased().contains("mmproj") == false,
+                              stem.hasPrefix(base + "-") else { continue }
+                        let variant = String(stem.dropFirst(base.count + 1))
+                        guard !variant.isEmpty else { continue }
+                        add("\(components[0])/\(repoName):\(variant)")
+                    }
+                }
+            }
         }
     }
 
@@ -376,23 +393,22 @@ func availableLocalModels(additionalPath: String) -> [LocalModel] {
     return results.sorted { $0.id.localizedCaseInsensitiveCompare($1.id) == .orderedAscending }
 }
 
-func availableModelChoices(additionalPath: String, splashVersion: String, preserving selectedModelID: String?) -> (compatible: [String], other: [String]) {
+func availableModelChoices(additionalPath: String, splashVersion: String, preserving selectedModelID: String?) -> [String] {
+    // Only models that are actually on this Mac; suggestions that were
+    // never downloaded are noise in a picker.
     var models = availableLocalModels(additionalPath: additionalPath)
-    for id in suggestedModelIDs where !models.contains(where: { $0.id == id }) {
-        models.append(LocalModel(id: id, source: tr("model.source.suggested")))
+    // DFlash2 draft repositories are not servable main models.
+    models.removeAll { $0.id.lowercased().hasSuffix("-dflash2") }
+    // A repo scanned without its variant is redundant when a variant of the
+    // same repo is present.
+    let variantIDs = Set(models.map(\.id).filter { $0.contains(":") })
+    models.removeAll { model in
+        !model.id.contains(":") && variantIDs.contains { $0.hasPrefix(model.id + ":") }
     }
     if let selectedModelID, !selectedModelID.isEmpty, !models.contains(where: { $0.id == selectedModelID }) {
         models.append(LocalModel(id: selectedModelID, source: tr("model.source.selected")))
     }
-
-    let orderedModels = models.sorted { $0.id.localizedCaseInsensitiveCompare($1.id) == .orderedAscending }
-    let compatible = orderedModels.filter {
-        compatibilityLabel(for: $0.id, splashVersion: splashVersion).hasPrefix("✓")
-    }.map(\.id)
-    let other = orderedModels.filter {
-        !compatibilityLabel(for: $0.id, splashVersion: splashVersion).hasPrefix("✓")
-    }.map(\.id)
-    return (compatible, other)
+    return models.sorted { $0.id.localizedCaseInsensitiveCompare($1.id) == .orderedAscending }.map(\.id)
 }
 
 /// Runs `executable` with `arguments` and captures its combined output.
@@ -559,6 +575,21 @@ func formatBytes(_ bytes: Int) -> String {
     let mb = Double(bytes) / 1_048_576
     if mb >= 1 { return String(format: "%.0f MB", mb) }
     return String(format: "%.0f KB", Double(bytes) / 1024)
+}
+
+/// Appends a timestamped line to ~/.splashbar/downloads.log so download
+/// progress and failures stay visible after the window is closed.
+func appendDownloadLog(_ line: String) {
+    let url = URL(fileURLWithPath: NSHomeDirectory() + "/.splashbar/downloads.log")
+    try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let stamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .medium)
+    if let handle = FileHandle(forWritingAtPath: url.path) {
+        handle.seekToEndOfFile()
+        handle.write(Data("[\(stamp)] \(line)\n".utf8))
+        try? handle.close()
+    } else {
+        try? Data("[\(stamp)] \(line)\n".utf8).write(to: url)
+    }
 }
 
 /// The total size of a folder's regular files, for the backup progress bar.
@@ -859,10 +890,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var activeModalCloseResponse: NSApplication.ModalResponse = .alertSecondButtonReturn
     var additionalModelsPathField: NSTextField?
     var compatibleModelsField: NSComboBox?
-    var otherModelsField: NSComboBox?
     var customModelIDField: NSTextField?
     var settingsSplashVersion = "?"
-
+    
+    /// Manages model downloads from Hugging Face.
+    private var downloadManager: DownloadManager?
+    private var downloadProgressWindow: NSWindow?
+    private var downloadProgressText: NSTextField?
+    private var downloadProgressBar: NSProgressIndicator?
+    private var downloadCancelButtons: [String: NSButton] = [:]  // modelID -> button
+    private var downloadProgressBars: [String: NSProgressIndicator] = [:]  // modelID -> per-row bar
+    private var downloadSizeLabels: [String: NSTextField] = [:]  // modelID -> per-row size label
+    private var downloadLoggedPercent: [String: Int] = [:]  // modelID -> last logged 10% step
+    var downloadLoggedComplete = Set<String>()
+    
+    // Download progress window variables
+    var modelDownloadProgressWindow: NSWindow?
+    var modelDownloadProgressText: NSTextField?
+    var modelDownloadProgressBar: NSProgressIndicator?
+    var modelDownloadProgressSpinner: NSProgressIndicator?
+    var modelDownloadProgressModelID: String?
+    
     var target: String { "gui/\(uid)/\(settings.launchdLabel)" }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -911,6 +959,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         _ = add(menu, tr("menu.log"), #selector(openLog))
         _ = add(menu, tr("menu.backup"), #selector(backupModel))
         _ = add(menu, tr("menu.restore"), #selector(restoreModel))
+        _ = add(menu, tr("menu.download"), #selector(downloadModel))
         _ = add(menu, tr("menu.settings"), #selector(configure))
         versionItem = add(menu, tr("menu.version"), #selector(chooseSplashVersion))
         menu.addItem(.separator())
@@ -1140,7 +1189,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.addButton(withTitle: tr("settings.cancel"))
 
         let compatibleModelField = NSComboBox()
-        let otherModelField = NSComboBox()
         let customModelField = NSTextField(string: "")
         let additionalPathField = NSTextField(string: settings.additionalModelsPath)
         let modelCacheField = NSTextField(string: settings.modelCacheDirectory)
@@ -1159,29 +1207,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let launchAtLoginField = NSButton(checkboxWithTitle: tr("settings.field.launchatlogin"), target: nil, action: nil)
         launchAtLoginField.state = settings.launchAtLogin ? .on : .off
         compatibleModelField.isEditable = false
-        otherModelField.isEditable = false
         compatibleModelsField = compatibleModelField
-        otherModelsField = otherModelField
         customModelIDField = customModelField
         settingsSplashVersion = currentSplashVersion
         refreshModelLists(additionalPath: settings.additionalModelsPath, preserving: settings.modelID)
 
         let modelSelectionCoordinator = ModelSelectionCoordinator(
             compatibleField: compatibleModelField,
-            otherField: otherModelField,
             customField: customModelField
         )
         compatibleModelField.target = modelSelectionCoordinator
         compatibleModelField.action = #selector(ModelSelectionCoordinator.modelListChanged(_:))
-        otherModelField.target = modelSelectionCoordinator
-        otherModelField.action = #selector(ModelSelectionCoordinator.modelListChanged(_:))
         customModelField.delegate = modelSelectionCoordinator
 
         let fields: [(String, NSView)] = [
             ("", launchAtLoginField),
             (tr("settings.field.url"), urlField),
             (tr("settings.field.compatible", currentSplashVersion), compatibleModelField),
-            (tr("settings.field.other"), otherModelField),
             (tr("settings.field.custom"), customModelField),
             (tr("settings.field.context"), contextField),
             (tr("settings.field.apikey"), apiKeyField),
@@ -1196,7 +1238,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             (tr("settings.field.modelcache"), modelCacheField)
         ]
 
-        let form = NSView(frame: NSRect(x: 0, y: 0, width: 720, height: CGFloat(fields.count) * 38))
+        let form = NSView(frame: NSRect(x: 0, y: 0, width: 720, height: CGFloat(fields.count) * 38 + 20))
         for (index, entry) in fields.enumerated() {
             let (title, field) = entry
             let y = CGFloat(fields.count - index - 1) * 38 + 6
@@ -1212,15 +1254,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         browseButton.frame = NSRect(x: 630, y: 6, width: 82, height: 24)
         browseButton.bezelStyle = .rounded
         form.addSubview(browseButton)
+        
         alert.accessoryView = form
 
         guard runClosableAlert(alert) == .alertFirstButtonReturn else { return }
 
         let serverText = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        let requestedModel = [compatibleModelField, otherModelField]
-            .map { $0.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .first(where: { !$0.isEmpty })
-            ?? customModelField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestedModel = [compatibleModelField.stringValue, customModelField.stringValue]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
         let requestedContext = ContextSize.allCases
             .first { $0.displayName == (contextField.titleOfSelectedItem ?? "") } ?? .auto
         let requestedAPIKey = apiKeyField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1685,36 +1727,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func currentSelectedModelID() -> String? {
-        [compatibleModelsField?.stringValue, otherModelsField?.stringValue, customModelIDField?.stringValue]
+        [compatibleModelsField?.stringValue, customModelIDField?.stringValue]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first(where: { !$0.isEmpty })
     }
 
     func refreshModelLists(additionalPath: String, preserving selectedModelID: String?) {
         guard let compatibleField = compatibleModelsField,
-              let otherField = otherModelsField,
               let customField = customModelIDField else { return }
 
-        let choices = availableModelChoices(
+        // One list: every model that is on this Mac. The compatibility
+        // verdict lives in the label, not in a second selector.
+        let models = availableModelChoices(
             additionalPath: additionalPath,
             splashVersion: settingsSplashVersion,
             preserving: selectedModelID
         )
         compatibleField.removeAllItems()
-        otherField.removeAllItems()
-        compatibleField.addItems(withObjectValues: choices.compatible)
-        otherField.addItems(withObjectValues: choices.other)
+        compatibleField.addItems(withObjectValues: models)
         compatibleField.placeholderString = tr("model.placeholder")
-        otherField.placeholderString = tr("model.placeholder")
         compatibleField.stringValue = ""
-        otherField.stringValue = ""
         customField.stringValue = ""
 
         guard let selectedModelID, !selectedModelID.isEmpty else { return }
-        if choices.compatible.contains(selectedModelID) {
+        if models.contains(selectedModelID) {
             compatibleField.selectItem(withObjectValue: selectedModelID)
-        } else if choices.other.contains(selectedModelID) {
-            otherField.selectItem(withObjectValue: selectedModelID)
         } else {
             customField.stringValue = selectedModelID
         }
@@ -2687,6 +2724,431 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let result = runCommand("/usr/bin/shasum", ["-a", "256", url.path])
         guard result.status == 0 else { return nil }
         return result.output.split(separator: " ").first.map { $0.lowercased() }
+    }
+
+    // MARK: - Model Downloads
+    
+    private let modelCatalog = ModelCatalog()
+    
+    @objc func downloadModel() {
+        guard let downloadManager = createDownloadManager() else { return }
+        
+        // Show model selection and download progress
+        showDownloadProgressWindow(for: downloadManager)
+    }
+    
+    private func createDownloadManager() -> DownloadManager? {
+        if let existing = downloadManager {
+            return existing
+        }
+        
+        let manager = DownloadManager()
+        manager.onStateChanged = { [weak self] modelID, state in
+            DispatchQueue.main.async {
+                self?.updateDownloadUI(modelID: modelID, state: state)
+            }
+        }
+        manager.onProgressUpdated = { [weak self] modelID, state in
+            DispatchQueue.main.async {
+                self?.updateDownloadProgress(modelID: modelID, state: state)
+            }
+        }
+        downloadManager = manager
+        return manager
+    }
+    
+    private func showDownloadProgressWindow(for manager: DownloadManager) {
+        // Close existing window if any
+        downloadProgressWindow?.close()
+        downloadProgressWindow = nil
+        downloadCancelButtons.removeAll()
+        downloadProgressBars.removeAll()
+        downloadSizeLabels.removeAll()
+        
+        let memoryGB = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024)
+        // The upstream rule: one row per model name, offering the GGUF
+        // variant with the most MEMORY that fits this Mac.
+        let suggestions = modelCatalog.suggestions(memoryGB: Int(memoryGB))
+        let installed = suggestions.filter { modelCatalog.isInstalled($0) }
+        let available = suggestions.filter { !modelCatalog.isInstalled($0) }
+        
+        // Layout: two sections (installed / available) of two-line rows.
+        // Each row carries the name, the official positioning line, the
+        // package size and either a download button or a checkmark.
+        let headerHeight: CGFloat = 30
+        let rowHeight: CGFloat = 52
+        let sectionGap: CGFloat = 14
+        let contentWidth: CGFloat = 520
+        let topMargin: CGFloat = 10
+        
+        var docHeight = topMargin
+        if !installed.isEmpty {
+            docHeight += headerHeight + CGFloat(installed.count) * rowHeight + sectionGap
+        }
+        docHeight += headerHeight + CGFloat(max(available.count, 1)) * rowHeight + topMargin
+        docHeight = max(docHeight, 140)
+        
+        let windowHeight = min(docHeight + 50, 640)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: windowHeight),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = tr("download.title")
+        window.isReleasedWhenClosed = false
+        
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 560, height: windowHeight))
+        
+        let scrollHeight = windowHeight - 50
+        let scrollView = NSScrollView(frame: NSRect(x: 20, y: 25, width: 520, height: scrollHeight))
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true  // scrollbar only when it is actually needed
+        scrollView.borderType = .noBorder
+        scrollView.backgroundColor = .clear
+        
+        let documentView = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: docHeight))
+        scrollView.documentView = documentView
+        content.addSubview(scrollView)
+        
+        // Rows stack from the top of the document view.
+        var top = docHeight
+        
+        func placeHeader(_ text: String) {
+            top -= headerHeight
+            let label = NSTextField(labelWithString: text)
+            label.frame = NSRect(x: 4, y: top + 6, width: contentWidth - 8, height: 20)
+            label.font = .systemFont(ofSize: 13, weight: .semibold)
+            label.textColor = .secondaryLabelColor
+            documentView.addSubview(label)
+        }
+        
+        func placeRow(_ entry: ModelCatalog.Entry, showCheckmark: Bool) {
+            top -= rowHeight
+            let rowTop = top + rowHeight - 4
+            
+            let nameLabel = NSTextField(labelWithString: entry.name)
+            nameLabel.frame = NSRect(x: 4, y: rowTop - 20, width: 250, height: 16)
+            nameLabel.font = .systemFont(ofSize: 13)
+            nameLabel.toolTip = entry.description
+            nameLabel.textColor = .labelColor
+            
+            let subtitle = NSTextField(labelWithString: tr(entry.aboutKey))
+            subtitle.frame = NSRect(x: 4, y: rowTop - 36, width: 250, height: 13)
+            subtitle.font = .systemFont(ofSize: 11)
+            subtitle.textColor = .secondaryLabelColor
+            
+            let sizeLabel = NSTextField(labelWithString: "\(entry.downloadGB) GB")
+            sizeLabel.frame = NSRect(x: 258, y: rowTop - 20, width: 90, height: 16)
+            sizeLabel.font = .systemFont(ofSize: 12)
+            sizeLabel.alignment = .right
+            sizeLabel.textColor = .secondaryLabelColor
+            
+            documentView.addSubview(nameLabel)
+            documentView.addSubview(subtitle)
+            documentView.addSubview(sizeLabel)
+            
+            if showCheckmark {
+                // The "..." actions menu, like the original app: Delete…
+                let actionsButton = NSButton(title: "⋯", target: self, action: #selector(showModelActionsMenu(_:)))
+                actionsButton.frame = NSRect(x: 372, y: rowTop - 30, width: 32, height: 22)
+                actionsButton.bezelStyle = .regularSquare
+                actionsButton.isBordered = false
+                actionsButton.font = .systemFont(ofSize: 14, weight: .medium)
+                actionsButton.identifier = NSUserInterfaceItemIdentifier(entry.id)
+                actionsButton.toolTip = tr("download.delete")
+                documentView.addSubview(actionsButton)
+
+                let check = NSTextField(labelWithString: "✓")
+                check.frame = NSRect(x: 420, y: rowTop - 20, width: 40, height: 16)
+                check.font = .systemFont(ofSize: 15, weight: .semibold)
+                check.alignment = .center
+                check.textColor = .controlAccentColor
+                documentView.addSubview(check)
+            } else {
+                let downloadButton = NSButton(title: tr("download.start"), target: self, action: #selector(startModelDownload(_:)))
+                downloadButton.tag = entry.id.hashValue
+                downloadButton.frame = NSRect(x: 356, y: rowTop - 36, width: 160, height: 24)
+                downloadButton.bezelStyle = .rounded
+                downloadButton.font = .systemFont(ofSize: 12)
+                downloadButton.target = self
+                downloadButton.action = #selector(startModelDownload(_:))
+                
+                // Thin progress bar under the row, visible while downloading.
+                let bar = NSProgressIndicator(frame: NSRect(x: 4, y: top + 2, width: 500, height: 6))
+                bar.style = .bar
+                bar.isIndeterminate = true
+                bar.isHidden = true
+                
+                documentView.addSubview(downloadButton)
+                documentView.addSubview(bar)
+                
+                downloadCancelButtons[entry.id] = downloadButton
+                downloadProgressBars[entry.id] = bar
+                downloadSizeLabels[entry.id] = sizeLabel
+                
+                // Reflect the manager's current state, so reopening the
+                // window shows running, finished and failed downloads
+                // correctly — with the real progress, not a spinning
+                // placeholder.
+                if let existing = manager.downloadState(for: entry.id) {
+                    let gb = 1_073_741_824.0
+                    switch existing.state {
+                    case .downloading:
+                        downloadButton.title = tr("download.cancel")
+                        downloadButton.isEnabled = true
+                        bar.isHidden = false
+                        if existing.totalBytes > 0 {
+                            bar.isIndeterminate = false
+                            bar.doubleValue = existing.progress * 100
+                            sizeLabel.stringValue = String(format: "%.1f / %.1f GB",
+                                                           Double(existing.downloadedBytes) / gb,
+                                                           Double(existing.totalBytes) / gb)
+                        } else {
+                            bar.isIndeterminate = true
+                            bar.startAnimation(nil)
+                        }
+                    case .complete:
+                        downloadButton.title = tr("download.start")
+                        downloadButton.isEnabled = true
+                    case .failed:
+                        downloadButton.title = tr("download.retry")
+                    case .idle:
+                        break
+                    }
+                }
+            }
+        }
+        
+        if !installed.isEmpty {
+            placeHeader(tr("download.onthismac"))
+            for entry in installed {
+                placeRow(entry, showCheckmark: true)
+            }
+            top -= sectionGap
+        }
+        if !available.isEmpty {
+            placeHeader(tr("download.available"))
+            for entry in available {
+                placeRow(entry, showCheckmark: false)
+            }
+        }
+        
+        window.contentView = content
+        downloadProgressWindow = window
+        window.center()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+    
+    @objc func startModelDownload(_ sender: NSButton) {
+        guard let manager = downloadManager else { return }
+
+        // Find the entry matching this button. While a download runs the
+        // same button acts as its cancel control.
+        for entry in modelCatalog.allEntries where sender.tag == entry.id.hashValue {
+            if case .downloading = manager.downloadState(for: entry.id)?.state {
+                appendDownloadLog("Download abgebrochen: \(entry.id)")
+                manager.cancelDownload(for: entry.id)
+                return
+            }
+            manager.startDownload(for: entry)
+            return
+        }
+    }
+    
+    /// The "..." menu of an installed model: Delete… (like the original app).
+    @objc func showModelActionsMenu(_ sender: NSButton) {
+        guard let modelID = sender.identifier?.rawValue,
+              let entry = modelCatalog.allEntries.first(where: { $0.id == modelID }) else { return }
+        
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        let deleteItem = NSMenuItem(title: tr("download.delete"), action: #selector(deleteModelAction(_:)), keyEquivalent: "")
+        deleteItem.target = self
+        deleteItem.representedObject = modelID
+        menu.addItem(deleteItem)
+        
+        menu.popUp(positioning: nil, at: NSPoint(x: sender.bounds.minX, y: sender.bounds.maxY + 4), in: sender)
+    }
+    
+    /// Removes an installed model from the Hugging Face Hub cache after a
+    /// destructive confirmation. The currently configured model is refused:
+    /// deleting it would break the next server start.
+    @objc func deleteModelAction(_ sender: NSMenuItem) {
+        guard let modelID = sender.representedObject as? String,
+              let entry = modelCatalog.allEntries.first(where: { $0.id == modelID }) else { return }
+        
+        // The model Splash is configured to run cannot go away.
+        if baseRepo(of: settings.modelID) == baseRepo(of: entry.id) {
+            let notice = NSAlert()
+            notice.messageText = tr("download.delete.active.title")
+            notice.informativeText = tr("download.delete.active", entry.name)
+            notice.addButton(withTitle: "OK")
+            runClosableAlert(notice)
+            return
+        }
+        
+        let confirm = NSAlert()
+        confirm.messageText = tr("download.delete.confirm.title")
+        confirm.informativeText = tr("download.delete.confirm.detail", entry.name, entry.downloadGB)
+        confirm.addButton(withTitle: tr("download.delete"))
+        confirm.addButton(withTitle: tr("settings.cancel"))
+        confirm.buttons.first?.hasDestructiveAction = true
+        guard runClosableAlert(confirm) == .alertFirstButtonReturn else { return }
+        
+        let repo = baseRepo(of: entry.id)
+        let repoFolder = URL(fileURLWithPath: NSHomeDirectory() + "/.cache/huggingface/hub/models--"
+                               + repo.replacingOccurrences(of: "/", with: "--"))
+        do {
+            try FileManager.default.removeItem(at: repoFolder)
+            appendDownloadLog("Modell gelöscht: \(entry.id)")
+            // The family's DFlash2 draft lives in its own repository; when
+            // no other model of the family remains it is dead weight —
+            // remove it too. Draft folder names end in -DFlash2, which
+            // familyName never maps onto itself, so only real GGUF model
+            // folders can keep the draft alive.
+            let family = familyName(of: entry.id)
+            let hubRoot = URL(fileURLWithPath: NSHomeDirectory() + "/.cache/huggingface/hub")
+            let siblings = (try? FileManager.default.contentsOfDirectory(atPath: hubRoot.path)) ?? []
+            let othersKeepFamily = siblings.contains { folder in
+                guard folder.hasPrefix("models--") else { return false }
+                let id = folder.replacingOccurrences(of: "models--", with: "")
+                    .replacingOccurrences(of: "--", with: "/")
+                return familyName(of: id) == family
+            }
+            if !othersKeepFamily {
+                let draftFolder = hubRoot.appendingPathComponent("models--incoai--\(family)-DFlash2", isDirectory: true)
+                try? FileManager.default.removeItem(at: draftFolder)
+            }
+            // Rebuild the window so the model moves to "Zum Herunterladen
+            // verfügbar".
+            if let manager = downloadManager {
+                showDownloadProgressWindow(for: manager)
+            }
+        } catch {
+            let failure = NSAlert()
+            failure.messageText = tr("download.delete.failed.title")
+            failure.informativeText = error.localizedDescription
+            failure.addButton(withTitle: "OK")
+            runClosableAlert(failure)
+        }
+    }
+    
+    private func showModelDownloadProgress(modelID: String, name: String, downloadGB: Int) {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 150),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = tr("settings.download.progress.title")
+        window.isReleasedWhenClosed = false
+        
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 420, height: 150))
+        
+        let label = NSTextField(labelWithString: tr("settings.download.progress.text", name, downloadGB))
+        label.frame = NSRect(x: 20, y: 80, width: 380, height: 24)
+        label.font = .systemFont(ofSize: 14)
+        content.addSubview(label)
+        
+        let bar = NSProgressIndicator(frame: NSRect(x: 20, y: 40, width: 380, height: 20))
+        bar.style = .bar
+        bar.isIndeterminate = true
+        content.addSubview(bar)
+        
+        let spinner = NSProgressIndicator(frame: NSRect(x: 366, y: 34, width: 20, height: 20))
+        spinner.style = .spinning
+        spinner.isIndeterminate = true
+        spinner.startAnimation(nil)
+        content.addSubview(spinner)
+        
+        window.contentView = content
+        modelDownloadProgressWindow = window
+        modelDownloadProgressText = label
+        modelDownloadProgressBar = bar
+        modelDownloadProgressSpinner = spinner
+        modelDownloadProgressModelID = modelID
+        
+        window.center()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+    
+    private func updateDownloadUI(modelID: String, state: DownloadManager.State) {
+        switch state {
+        case .complete:
+            // updateDownloadUI runs per completed file; log the completion
+            // once per model, not once per file.
+            if downloadLoggedComplete.insert(modelID).inserted {
+                appendDownloadLog("Download abgeschlossen: \(modelID)")
+            }
+            downloadLoggedPercent[modelID] = nil
+            downloadProgressBars[modelID]?.isHidden = true
+            // The button returns to "Laden": the package may have grown
+            // (DFlash2 draft and vision projector are part of every run),
+            // and pressing it fetches whatever is missing without
+            // re-downloading files that already exist.
+            downloadCancelButtons[modelID]?.title = tr("download.start")
+            downloadCancelButtons[modelID]?.isEnabled = true
+        case .failed(let message):
+            appendDownloadLog("Download fehlgeschlagen: \(modelID) — \(message)")
+            downloadLoggedPercent[modelID] = nil
+            downloadCancelButtons[modelID]?.title = tr("download.retry")
+            downloadCancelButtons[modelID]?.isEnabled = true
+            downloadProgressBars[modelID]?.isHidden = true
+        case .downloading:
+            appendDownloadLog("Download gestartet: \(modelID)")
+            downloadCancelButtons[modelID]?.title = tr("download.cancel")
+            downloadCancelButtons[modelID]?.isEnabled = true
+        case .idle:
+            downloadCancelButtons[modelID]?.title = tr("download.start")
+            downloadCancelButtons[modelID]?.isEnabled = true
+            downloadProgressBars[modelID]?.isHidden = true
+            // Reset the readout to the model's total size.
+            if let entry = modelCatalog.allEntries.first(where: { $0.id == modelID }) {
+                downloadSizeLabels[modelID]?.stringValue = "\(entry.downloadGB) GB"
+            }
+        }
+    }
+    
+    private func updateDownloadProgress(modelID: String, state: DownloadManager.ModelDownloadState) {
+        let bar = downloadProgressBars[modelID]
+        let sizeLabel = downloadSizeLabels[modelID]
+        guard state.state == .downloading else {
+            bar?.isHidden = true
+            return
+        }
+
+        if let bar {
+            if state.totalBytes > 0 {
+                bar.isIndeterminate = false
+                bar.stopAnimation(nil)
+                bar.doubleValue = state.progress * 100
+            } else {
+                bar.isIndeterminate = true
+                bar.startAnimation(nil)
+            }
+            bar.isHidden = false
+        }
+
+        if let sizeLabel {
+            let gb = 1_073_741_824.0
+            let downloaded = Double(state.downloadedBytes) / gb
+            let total = Double(state.totalBytes) / gb
+            sizeLabel.stringValue = total > 0
+                ? String(format: "%.1f / %.1f GB", downloaded, total)
+                : String(format: "%.1f GB", downloaded)
+        }
+
+        // Log every 10% step, once.
+        if state.totalBytes > 0 {
+            let percent = Int((state.progress * 100) / 10) * 10
+            if percent > 0, percent > (downloadLoggedPercent[modelID] ?? 0) {
+                downloadLoggedPercent[modelID] = percent
+                appendDownloadLog(String(format: "Download \(modelID): %d%% (%.1f / %.1f GB)", percent, Double(state.downloadedBytes) / 1_073_741_824.0, Double(state.totalBytes) / 1_073_741_824.0))
+            }
+        }
     }
 
     /// Kills the running splash instance before the app exits so its model
