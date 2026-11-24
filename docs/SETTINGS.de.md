@@ -53,11 +53,34 @@ LaunchAgenten — sie braucht nie ein „Speichern".
 
 | Einstellung | Standard | Was sie tut |
 |---|---|---|
-| **✓ Kompatibel mit Splash x.y** | — | Modelle, die Splash offiziell unterstützt (`splash serve --list-models`). Nur wählbar, nicht editierbar |
-| **✕ Nicht unterstützt / ungetestet** | — | Modelle, die auf der Platte gefunden wurden (Downloads-Ordner, Hugging-Face-Cache, zusätzlicher Pfad) und nicht in der Unterstützungsliste stehen. Wählbar, mit Warnung |
+| **✓ Passend für Splash x.y** | — | Eine einzige Liste mit jedem Modell, das tatsächlich auf diesem Mac liegt: dem Splash-Installationsordner, dem Hugging-Face-Hub-Cache (Varianten-IDs werden aus den GGUF-Dateinamen des Snapshots abgeleitet), dem zusätzlichen Pfad und LM-Studio-Ordnern. Nur wählbar, nicht editierbar. DFlash2-Draft-Repos und Repo-IDs ohne Variante, deren Variante bekannt ist, werden ausgeblendet |
 | **Eigene Modell-ID** | leer = automatisch | Freies Feld für alles andere (z. B. eine Hugging-Face-ID) → wird als `--model` in das plist geschrieben. Leer lässt Splash seinen Standard wählen |
 | **Kontextgröße** | Automatisch | Setzt `--max-context` (16K–256K). **Automatisch** lässt das Flag komplett weg → Splash dimensioniert seinen KV-Cache aus dem freien RAM beim Start (deshalb siehst du z. B. 180K auf einer 36-GB-Maschine). Ein fester Wert gibt planbaren, reproduzierbaren RAM-Verbrauch |
 | **Modell-Cache-Ordner** | `~/.cache/huggingface/hub` | Wo Splash die Modell-Gewichte liest — der Hugging-Face-Hub-Cache. Wird als `HF_HUB_CACHE`-Umgebungsvariable in das plist geschrieben, damit alle künftigen Downloads (und vorhandenen Gewichte) dort landen. Zeige ihn auf einen sichtbaren Home-Ordner, um die Modell-Dateien zu sehen; ein leeres Feld fällt auf den Standardort zurück. Der Ordner wird automatisch angelegt |
+
+### Modelle herunterladen („Modelle herunterladen …" im Menü)
+
+Der Menüeintrag öffnet ein eigenes Download-Fenster — kein Teil der
+Einstellungen — mit dem Katalog der drei unterstützten GGUF-Modelle
+(Qwen3.6-35B-A3B, Qwen3.8-27B, Ternary-Bonsai-2-27B) und der kleineren
+Quant-Varianten für 24-GB-Macs. Jede Zeile nennt Downloadgröße und
+RAM-Bedarf; pro Modell wählt der Katalog die Variante, die zum
+Arbeitsspeicher des Macs passt.
+
+- Ein Download holt das **komplette Paket**: das GGUF der Variante, genau
+  einen Vision-Projector (ein GGUF, dessen Name `mmproj` enthält, BF16
+  bevorzugt) und den DFlash2-Draft der Familie, die die Engine für das
+  Modell meldet (Bonsai gehört zur Qwen3.8-27B-Familie und nutzt deren
+  Draft).
+- Die Dateien landen im Standard-Hugging-Face-Hub-Cache
+  (`blobs/<sha256>` + Snapshot-Symlinks + `refs/main`), geprüft gegen die
+  SHA-256, die der Hub meldet — `splash serve` findet alles auch offline
+  (`HF_HUB_OFFLINE`).
+- Der Fortschritt ist live pro Datei, das Protokoll liegt in
+  `~/.splashbar/downloads.log`, abgebrochene Übertragungen werden fortgesetzt
+  (auch über App-Neustarts), und **Löschen …** entfernt ein Modell — das
+  aktive ist geschützt, und der Familien-Draft verschwindet mit seinem
+  letzten Modell.
 
 ### Wo das Modell tatsächlich liegt
 

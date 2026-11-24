@@ -52,11 +52,31 @@ LaunchAgent's executable path directly — it never needs a "Save".
 
 | Setting | Default | What it does |
 |---|---|---|
-| **✓ Compatible with Splash x.y** | — | Models Splash officially supports (`splash serve --list-models`). Selection only, not editable |
-| **✕ Unsupported / untested** | — | Models found on disk (Downloads folder, Hugging Face cache, extra path) that are not in the support list. Selectable, with a warning |
+| **✓ Compatible with Splash x.y** | — | One list of every model that is actually on this Mac: the Splash install directory, the Hugging Face hub cache (variant IDs are derived from the snapshot's GGUF file names), the extra path and LM Studio directories. Selection only, not editable. DFlash2 draft repositories and bare repo IDs whose variant is known are hidden |
 | **Custom model ID** | empty = auto | Free field for anything else (e.g. a Hugging Face ID) → written as `--model` into the plist. Empty lets Splash pick its default |
 | **Context size** | Automatic | Sets `--max-context` (16K–256K). **Automatic** omits the flag entirely → Splash sizes its KV cache from the free RAM at startup (this is why you can see e.g. 180K on a 36 GB machine). A pinned value gives predictable, reproducible RAM usage |
 | **Model cache directory** | `~/.cache/huggingface/hub` | Where Splash reads the model weights from — the Hugging Face hub cache. Written as the `HF_HUB_CACHE` environment variable into the plist, so all future downloads (and existing weights) resolve there. Point it at a visible home folder to see the model files; an empty field falls back to the standard location. The directory is created automatically |
+
+### Downloading models ("Download models…" in the menu)
+
+The menu opens a dedicated download window — not part of the settings —
+with a catalog of the three supported GGUF models (Qwen3.6-35B-A3B,
+Qwen3.8-27B, Ternary-Bonsai-2-27B) and the smaller quant variants for
+24 GB Macs. Each row states its download size and RAM requirement, and the
+catalog picks, per model, the variant that fits the Mac's memory.
+
+- A download fetches the **complete package**: the variant's GGUF, exactly
+  one vision projector (a GGUF whose name holds `mmproj`, BF16 preferred)
+  and the DFlash2 draft of the family the engine reports for the model
+  (Bonsai belongs to the Qwen3.8-27B family and uses its draft).
+- Files land in the standard Hugging Face hub cache
+  (`blobs/<sha256>` + snapshot symlinks + `refs/main`), verified against
+  the SHA-256 the Hub reports — so `splash serve` finds everything even
+  when it runs offline (`HF_HUB_OFFLINE`).
+- Progress is live per file, the log goes to `~/.splashbar/downloads.log`,
+  failed transfers resume where they stopped (across app restarts), and
+  **Delete…** removes a model — the active one is protected, and the
+  family's draft goes away with its last model.
 
 ### Where the model actually lives
 
