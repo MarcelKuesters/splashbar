@@ -30,6 +30,10 @@ seven languages (de, en, fr, es, ja, zh, ru).
   GPU/phys_footprint, not in RSS
 - Start / Stop (frees RAM + VRAM) / Restart without opening Terminal
 - Opens the chat UI at `http://127.0.0.1:8080` and the server log
+- Downloads models from Hugging Face with live progress, SHA-256 verification
+  and resume across restarts — each download fetches the complete package
+  (the GGUF, its vision projector and the family's DFlash2 draft) and places
+  it in the standard Hub cache, where Splash finds it even offline
 - Selects the model ID passed to `splash serve --model`
 - Chooses the context size passed to `splash serve --max-context` (auto = the model's native window)
 - Optionally passes an API key and an allowed host to the server

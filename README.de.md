@@ -32,6 +32,10 @@ Systemsprache und sind in sieben Sprachen lokalisiert (de, en, fr, es, ja, zh, r
   GPU/phys_footprint, nicht in der RSS
 - Starten / Stoppen (freit RAM + VRAM) / Neu starten, ohne das Terminal zu öffnen
 - Öffnet die Chat-Oberfläche unter `http://127.0.0.1:8080` sowie das Server-Protokoll
+- Lädt Modelle aus Hugging Face mit Live-Fortschritt, SHA-256-Prüfung und
+  Wiederaufnahme nach Neustarts — jeder Download holt das komplette Paket
+  (das GGUF, seinen Vision-Projector und den DFlash2-Draft der Familie) und
+  legt es im Standard-Hub-Cache ab, wo Splash es auch offline findet
 - Wählt die Modell-ID für `splash serve --model`
 - Wählt die Kontextgröße für `splash serve --max-context` (Auto = das native Fenster des Modells)
 - Übergibt optional API-Schlüssel und erlaubten Host an den Server
