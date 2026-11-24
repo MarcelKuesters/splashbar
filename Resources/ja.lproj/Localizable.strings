@@ -39,7 +39,7 @@
 "settings.field.agent" = "LaunchAgentラベル";
 "settings.field.allowedhost" = "許可ホスト（--allowed-host）";
 "settings.field.apikey" = "APIキー（--api-key）";
-"settings.field.compatible" = "✓ Splash %1$@ に互換";
+"settings.field.compatible" = "✓ %1$@ に互換";
 "settings.field.custom" = "カスタムモデルID（--model）";
 "settings.field.context" = "コンテキストサイズ（--max-context）";
 "settings.field.idle" = "待機閾値（GB）";
@@ -50,7 +50,7 @@
 "settings.field.refresh" = "更新間隔（秒）";
 "settings.field.timeout" = "APIタイムアウト（秒）";
 "settings.field.url" = "サーバーURL";
-"settings.info" = "Splash %1$@。モデルはSplash/Hugging FaceキャッシュとLM Studioから検出されます。リストは互換性別に分離され、未確認のモデルは下のリストに表示されます。検索フォルダの追加やIDの直接入力ができます。";
+"settings.info" = "%1$@。このMacに既にダウンロード済みのモデルのみが表示されます。カスタムモデルID欄は手動入力用に残ります。";
 "settings.invalid" = "無効な設定";
 "settings.invalid.detail" = "URL、モデルID、LaunchAgent設定、正の数値を確認してください。";
 "settings.ok" = "OK";
@@ -151,3 +151,48 @@
 "restore.error.none" = "バックアップが見つかりません";
 "restore.error.none.detail" = "%s にバックアップアーカイブがありません。まず「モデルをバックアップ…」で作成してください。モデルキャッシュを削除したときは、こちらに戻って復元できます。";
 "restore.error.unknown" = "不明なエラー";
+
+// Model downloads (added with the download feature; English fallback text)
+"menu.download" = "Download models …";
+"download.cancel" = "Cancel";
+"download.cancelled" = "Download cancelled.";
+"download.cancelling" = "Cancelling download…";
+"download.complete" = "Complete";
+"download.downloading" = "Downloading…";
+"download.error" = "Download failed: %@";
+"download.error.none" = "No models available";
+"download.retry" = "Retry";
+"download.size" = "%d GB";
+"download.start" = "Download";
+"download.suggested" = "Suggested Models";
+"download.title" = "Download Models";
+"settings.download.done" = "✓ Complete";
+"settings.download.downloading" = "Downloading…";
+"settings.download.error" = "Error";
+"settings.download.progress.downloading" = "%@: %d%% (%d/%d MB)";
+"settings.download.progress.fetching" = "Fetching file list…";
+"settings.download.progress.text" = "%@ (%d GB)";
+"settings.download.progress.title" = "Downloading Model";
+"settings.download.retry" = "Retry";
+"settings.download.start" = "Download";
+"settings.download.title" = "Download Models";
+
+// Download window sections and model positioning lines
+"download.onthismac" = "Models on This Mac";
+"download.available" = "Available to Download";
+"model.about.allrounder" = "Fast all-rounder";
+"model.about.strongest" = "Strongest at this size, slower";
+"model.about.capable" = "Most capable";
+"model.about.textonly" = "Text only";
+"model.about.largest" = "Largest model";
+"model.about.smallest" = "Smallest download";
+
+// Deleting an installed model ("..." menu)
+"download.delete" = "Delete…";
+"download.delete.confirm.title" = "Delete Model?";
+"download.delete.confirm.detail" = "Remove “%@” and free about %d GB? The model can be downloaded again at any time.";
+"download.delete.active.title" = "Model Is Active";
+"download.delete.active" = "“%@” is the currently configured model and cannot be deleted. Choose a different model in Settings first.";
+"download.delete.failed.title" = "Delete Failed";
+
+"download.ram" = "約%1$@ GBのメモリが必要";

@@ -39,7 +39,7 @@
 "settings.field.agent" = "LaunchAgent label";
 "settings.field.allowedhost" = "Allowed host (--allowed-host)";
 "settings.field.apikey" = "API key (--api-key)";
-"settings.field.compatible" = "✓ Compatible with Splash %1$@";
+"settings.field.compatible" = "✓ Compatible with %1$@";
 "settings.field.custom" = "Custom model ID (--model)";
 "settings.field.context" = "Context size (--max-context)";
 "settings.field.idle" = "Idle threshold (GB)";
@@ -50,7 +50,7 @@
 "settings.field.refresh" = "Refresh interval (sec.)";
 "settings.field.timeout" = "API timeout (sec.)";
 "settings.field.url" = "Server URL";
-"settings.info" = "Splash %1$@. Models are discovered from the Splash/Hugging Face caches and LM Studio. Lists are split by compatibility; unverified models go into the lower list. You can add a search folder or enter an ID manually.";
+"settings.info" = "%1$@. Only models already downloaded to this Mac are offered, split by compatibility. Models Splash cannot verify appear in the lower list; the custom model ID field stays for manual entries.";
 "settings.invalid" = "Invalid Settings";
 "settings.invalid.detail" = "Please check the URL, model ID, LaunchAgent settings, and positive numbers.";
 "settings.ok" = "OK";
@@ -129,6 +129,7 @@ The operation is in progress; please wait until it is finished.";
 "version.cancelled" = "The Splash %1$@ download was aborted. Files created so far and the directory ~/.splashbar/splash-versions/%1$@ were deleted. The previously active Splash version remains selected.";
 "menu.backup" = "Back up model…";
 "menu.restore" = "Restore model…";
+"menu.download" = "Download models …";
 "settings.field.modelcache" = "Model cache directory";
 "backup.title" = "Back Up the Model";
 "backup.confirm" = "Copy %1$@ of model files to a backup archive in ~/SplashBar-Backups? The current cache at %2$s stays in place. This takes a few minutes and needs about %1$@ of free space.";
@@ -151,3 +152,51 @@ The operation is in progress; please wait until it is finished.";
 "restore.error.none" = "No Backups Found";
 "restore.error.none.detail" = "There are no backup archives in %s yet. Create one first with “Back up model…”, then come back here if you ever delete the model cache.";
 "restore.error.unknown" = "an unknown error";
+
+
+// MARK: - Model Downloads
+"download.title" = "Download Models";
+"download.suggested" = "Suggested Models";
+"download.start" = "Download";
+"download.downloading" = "Downloading…";
+"download.complete" = "Complete";
+"download.retry" = "Retry";
+"download.error" = "Download failed: %@";
+"download.error.none" = "No models available";
+"download.cancel" = "Cancel";
+"download.cancelling" = "Cancelling download…";
+"download.cancelled" = "Download cancelled.";
+"download.size" = "%d GB";
+
+
+// MARK: - Model Downloads in Settings
+"settings.download.title" = "Download Models";
+"settings.download.start" = "Download";
+"settings.download.downloading" = "Downloading…";
+"settings.download.done" = "✓ Complete";
+"settings.download.error" = "Error";
+"settings.download.retry" = "Retry";
+"settings.download.progress.title" = "Downloading Model";
+"settings.download.progress.text" = "%@ (%d GB)";
+"settings.download.progress.fetching" = "Fetching file list…";
+"settings.download.progress.downloading" = "%@: %d%% (%d/%d MB)";
+
+// Download window sections and model positioning lines
+"download.onthismac" = "Models on This Mac";
+"download.available" = "Available to Download";
+"model.about.allrounder" = "Fast all-rounder";
+"model.about.strongest" = "Strongest at this size, slower";
+"model.about.capable" = "Most capable";
+"model.about.textonly" = "Text only";
+"model.about.largest" = "Largest model";
+"model.about.smallest" = "Smallest download";
+
+// Deleting an installed model ("..." menu)
+"download.delete" = "Delete…";
+"download.delete.confirm.title" = "Delete Model?";
+"download.delete.confirm.detail" = "Remove “%@” and free about %d GB? The model can be downloaded again at any time.";
+"download.delete.active.title" = "Model Is Active";
+"download.delete.active" = "“%@” is the currently configured model and cannot be deleted. Choose a different model in Settings first.";
+"download.delete.failed.title" = "Delete Failed";
+
+"download.ram" = "Needs about %1$@ GB of RAM";

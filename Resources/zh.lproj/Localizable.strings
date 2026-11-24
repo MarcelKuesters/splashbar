@@ -39,7 +39,7 @@
 "settings.field.agent" = "LaunchAgent 标签";
 "settings.field.allowedhost" = "允许的主机（--allowed-host）";
 "settings.field.apikey" = "API 密钥（--api-key）";
-"settings.field.compatible" = "✓ 兼容 Splash %1$@";
+"settings.field.compatible" = "✓ 兼容 %1$@";
 "settings.field.custom" = "自定义模型 ID（--model）";
 "settings.field.context" = "上下文大小（--max-context）";
 "settings.field.idle" = "空闲阈值（GB）";
@@ -50,7 +50,7 @@
 "settings.field.refresh" = "刷新间隔（秒）";
 "settings.field.timeout" = "API 超时（秒）";
 "settings.field.url" = "服务器 URL";
-"settings.info" = "Splash %1$@。模型从 Splash/Hugging Face 缓存和 LM Studio 中发现。列表按兼容性分组；未验证的模型在下列表。可添加搜索文件夹或手动输入 ID。";
+"settings.info" = "%1$@。仅显示已下载到这台 Mac 的模型；自定义模型 ID 栏保留用于手动输入。";
 "settings.invalid" = "无效设置";
 "settings.invalid.detail" = "请检查 URL、模型 ID、LaunchAgent 配置和正数值。";
 "settings.ok" = "OK";
@@ -151,3 +151,48 @@
 "restore.error.none" = "未找到备份";
 "restore.error.none.detail" = "%s 中还没有备份归档。请先用「备份模型…」创建一个；如果你删除了模型缓存，可以来这里恢复。";
 "restore.error.unknown" = "未知错误";
+
+// Model downloads (added with the download feature; English fallback text)
+"menu.download" = "Download models …";
+"download.cancel" = "Cancel";
+"download.cancelled" = "Download cancelled.";
+"download.cancelling" = "Cancelling download…";
+"download.complete" = "Complete";
+"download.downloading" = "Downloading…";
+"download.error" = "Download failed: %@";
+"download.error.none" = "No models available";
+"download.retry" = "Retry";
+"download.size" = "%d GB";
+"download.start" = "Download";
+"download.suggested" = "Suggested Models";
+"download.title" = "Download Models";
+"settings.download.done" = "✓ Complete";
+"settings.download.downloading" = "Downloading…";
+"settings.download.error" = "Error";
+"settings.download.progress.downloading" = "%@: %d%% (%d/%d MB)";
+"settings.download.progress.fetching" = "Fetching file list…";
+"settings.download.progress.text" = "%@ (%d GB)";
+"settings.download.progress.title" = "Downloading Model";
+"settings.download.retry" = "Retry";
+"settings.download.start" = "Download";
+"settings.download.title" = "Download Models";
+
+// Download window sections and model positioning lines
+"download.onthismac" = "Models on This Mac";
+"download.available" = "Available to Download";
+"model.about.allrounder" = "Fast all-rounder";
+"model.about.strongest" = "Strongest at this size, slower";
+"model.about.capable" = "Most capable";
+"model.about.textonly" = "Text only";
+"model.about.largest" = "Largest model";
+"model.about.smallest" = "Smallest download";
+
+// Deleting an installed model ("..." menu)
+"download.delete" = "Delete…";
+"download.delete.confirm.title" = "Delete Model?";
+"download.delete.confirm.detail" = "Remove “%@” and free about %d GB? The model can be downloaded again at any time.";
+"download.delete.active.title" = "Model Is Active";
+"download.delete.active" = "“%@” is the currently configured model and cannot be deleted. Choose a different model in Settings first.";
+"download.delete.failed.title" = "Delete Failed";
+
+"download.ram" = "约需 %1$@ GB 内存";

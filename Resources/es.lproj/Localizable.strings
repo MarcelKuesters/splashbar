@@ -39,7 +39,7 @@
 "settings.field.agent" = "Etiqueta del LaunchAgent";
 "settings.field.allowedhost" = "Host permitido (--allowed-host)";
 "settings.field.apikey" = "Clave API (--api-key)";
-"settings.field.compatible" = "✓ Compatible con Splash %1$@";
+"settings.field.compatible" = "✓ Compatible con %1$@";
 "settings.field.custom" = "ID de modelo personalizada (--model)";
 "settings.field.context" = "Tamaño de contexto (--max-context)";
 "settings.field.idle" = "Umbral de inactividad (GB)";
@@ -50,7 +50,7 @@
 "settings.field.refresh" = "Intervalo de actualización (s)";
 "settings.field.timeout" = "Tiempo de espera de la API (s)";
 "settings.field.url" = "URL del servidor";
-"settings.info" = "Splash %1$@. Los modelos se detectan desde las cachés de Splash/Hugging Face y LM Studio. Las listas se dividen por compatibilidad; los modelos no verificados van en la lista inferior. Puedes añadir una carpeta de búsqueda o introducir un ID manualmente.";
+"settings.info" = "%1$@. Solo se ofrecen los modelos ya descargados en este Mac; el campo de ID de modelo propia queda para entradas manuales.";
 "settings.invalid" = "Ajustes no válidos";
 "settings.invalid.detail" = "Comprueba la URL, el ID del modelo, los parámetros del LaunchAgent y números positivos.";
 "settings.ok" = "OK";
@@ -151,3 +151,48 @@ La operación está en curso; espera a que termine.";
 "restore.error.none" = "No se encontraron copias de seguridad";
 "restore.error.none.detail" = "Aún no hay archivos de copia de seguridad en %s. Crea uno primero con «Copiar modelo…» y vuelve aquí si algún día borras la caché del modelo.";
 "restore.error.unknown" = "un error desconocido";
+
+// Model downloads (added with the download feature; English fallback text)
+"menu.download" = "Download models …";
+"download.cancel" = "Cancel";
+"download.cancelled" = "Download cancelled.";
+"download.cancelling" = "Cancelling download…";
+"download.complete" = "Complete";
+"download.downloading" = "Downloading…";
+"download.error" = "Download failed: %@";
+"download.error.none" = "No models available";
+"download.retry" = "Retry";
+"download.size" = "%d GB";
+"download.start" = "Download";
+"download.suggested" = "Suggested Models";
+"download.title" = "Download Models";
+"settings.download.done" = "✓ Complete";
+"settings.download.downloading" = "Downloading…";
+"settings.download.error" = "Error";
+"settings.download.progress.downloading" = "%@: %d%% (%d/%d MB)";
+"settings.download.progress.fetching" = "Fetching file list…";
+"settings.download.progress.text" = "%@ (%d GB)";
+"settings.download.progress.title" = "Downloading Model";
+"settings.download.retry" = "Retry";
+"settings.download.start" = "Download";
+"settings.download.title" = "Download Models";
+
+// Download window sections and model positioning lines
+"download.onthismac" = "Models on This Mac";
+"download.available" = "Available to Download";
+"model.about.allrounder" = "Fast all-rounder";
+"model.about.strongest" = "Strongest at this size, slower";
+"model.about.capable" = "Most capable";
+"model.about.textonly" = "Text only";
+"model.about.largest" = "Largest model";
+"model.about.smallest" = "Smallest download";
+
+// Deleting an installed model ("..." menu)
+"download.delete" = "Delete…";
+"download.delete.confirm.title" = "Delete Model?";
+"download.delete.confirm.detail" = "Remove “%@” and free about %d GB? The model can be downloaded again at any time.";
+"download.delete.active.title" = "Model Is Active";
+"download.delete.active" = "“%@” is the currently configured model and cannot be deleted. Choose a different model in Settings first.";
+"download.delete.failed.title" = "Delete Failed";
+
+"download.ram" = "Necesita unos %1$@ GB de RAM";
