@@ -28,7 +28,7 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
  <key>CFBundleExecutable</key><string>SplashBar</string>
  <key>CFBundleIconFile</key><string>AppIcon</string>
  <key>CFBundlePackageType</key><string>APPL</string>
- <key>CFBundleShortVersionString</key><string>1.0.0</string>
+ <key>CFBundleShortVersionString</key><string>1.1.0</string>
  <key>CFBundleDevelopmentRegion</key><string>de</string>
  <key>CFBundleLocalizations</key><array>
   <string>de</string>
